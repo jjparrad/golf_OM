@@ -66,6 +66,7 @@ add_executable(main
 	common/objloader.hpp
 	common/vboindexer.cpp
 	common/vboindexer.hpp
+	common/input.cpp
 	
         src/vertex_shader.glsl
         src/fragment_shader.glsl

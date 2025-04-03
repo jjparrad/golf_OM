@@ -26,8 +26,9 @@ GLFWwindow* window;
 #include <common/objloader.hpp>
 #include <common/vboindexer.hpp>
 #include <common/game_object.hpp>
+#include "common/input.hpp"
 
-void processInput(GLFWwindow *window);
+
 GameObject* generateSurface();
 Mesh loadModel(std::string filename);
 void setScene();
@@ -205,7 +206,7 @@ int main( void )
         lastFrame = currentFrame;
         
         // input
-        processInput(window);
+        processInput(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up, focusedObject, gameObjects);
 
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -326,128 +327,6 @@ int main( void )
     return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    //Camera zoom in and out
-    float cameraSpeed = 2.5 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        camera_position += cameraSpeed * camera_target;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        camera_position -= cameraSpeed * camera_target;
-
-    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
-        float currentTime = glfwGetTime();
-        float inputDeltaTime = currentTime - inputLastTime;
-        if (inputDeltaTime < 0.2) return;
-        inputLastTime = currentTime;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
-        if (focusedObject == -1) {
-            camera_position += cameraSpeed * a;
-        } else {
-            gameObjects[focusedObject]->translate(a * glm::vec3(0.1));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
-        if (focusedObject == -1) {
-            camera_position -= cameraSpeed * a;
-        } else {
-            gameObjects[focusedObject]->translate(a * glm::vec3(-0.1));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        glm::vec3 left = glm::cross(camera_up, camera_target);
-        if (focusedObject == -1) {
-            camera_position -= cameraSpeed * left;
-        } else {
-            gameObjects[focusedObject]->translate(left * glm::vec3(-0.1));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        glm::vec3 left = glm::cross(camera_up, camera_target);
-        if (focusedObject == -1) {
-            camera_position += cameraSpeed * left;
-        } else {
-            gameObjects[focusedObject]->translate(left * glm::vec3(0.1));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        if (focusedObject == -1) { 
-            camera_position += (0.5f * cameraSpeed) * camera_up;
-        } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, 0.1, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        if (focusedObject == -1) {
-            camera_position -= (0.5f * cameraSpeed) * camera_up;
-        } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, -0.1, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        if (focusedObject == -1) {
-            camera_target += (0.5f * cameraSpeed) * camera_up;
-        } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        if (focusedObject == -1) {
-            camera_target -= (0.5f * cameraSpeed) * camera_up;
-        } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        if (focusedObject == -1) {
-            glm::vec3 left = glm::cross(camera_up, camera_target);
-            camera_target -= (0.5f * cameraSpeed) * left;
-        } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        if (focusedObject == -1) {
-            glm::vec3 left = glm::cross(camera_up, camera_target);
-            camera_target += (0.5f * cameraSpeed) * left;
-        } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
-        float currentTime = glfwGetTime();
-        float inputDeltaTime = currentTime - inputLastTime;
-        if (inputDeltaTime < 0.2) return;
-        inputLastTime = currentTime;
-        focusedObject++;
-        if (focusedObject >= gameObjects.size()) {
-            focusedObject = -1;
-        }
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-        std::cout << camera_position.x << ", " << camera_position.y << ", " << camera_position.z << std::endl;
-        
-    }
-}
 
 GameObject* generateSurface() {
     std::vector<unsigned short> indices;
