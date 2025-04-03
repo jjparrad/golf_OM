@@ -153,6 +153,25 @@ public:
         std::cout << "No Projection" << std::endl;
         return position[1];
     };
+
+    void setTexCoordForSphere() {
+        textureCoords.clear();
+
+        for (const glm::vec3& vertex : vertices) {
+            // Conversion des coordonnées cartésiennes en coordonnées sphériques
+            float theta = atan2(vertex.z, vertex.x);  // Angle autour de l'axe Y (longitude)
+            float phi = acos(vertex.y);              // Angle depuis le pôle nord (latitude)
+
+            // Normalisation des angles pour les UV
+            float u = (theta + glm::pi<float>()) / (2.0f * glm::pi<float>()); // [0, 1]
+            float v = phi / glm::pi<float>();                                 // [0, 1]
+
+            textureCoords.push_back(glm::vec2(u, v));
+        }
+    }
+
+
+
 };
 
 #endif // MESH_H

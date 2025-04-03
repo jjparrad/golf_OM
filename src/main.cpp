@@ -38,14 +38,18 @@ void loadGameObject(GameObject object, GLuint vertexbuffer, GLuint texturebuffer
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char* TEXTURE_LOW_PATH = "../textures/grass.png";
-const char* TEXTURE_MID_PATH = "../textures/rock.png";
-const char* TEXTURE_HIGH_PATH = "../textures/snowrocks.png";
+const char* TEXTURE_LOW_PATH = "../assets/textures/grass.png";
+const char* TEXTURE_MID_PATH = "../assets/textures/rock.png";
+const char* TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
 
-// const char* HEIGHTMAP_PATH = "../textures/heightmap_rocky.png";
-// const char* HEIGHTMAP_PATH = "../textures/heightmap_mountain.png";
-// const char* HEIGHTMAP_PATH = "../textures/heightmap_1024x1024.png";
-const char* HEIGHTMAP_PATH = "../textures/heightmap_1.jpg";
+// const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_rocky.png";
+// const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_mountain.png";
+// const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_1024x1024.png";
+const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_1.jpg";
+
+const char* TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
+
+
 unsigned char *heightmapData;
 int heightmapWidth, heightmapHeight, heightmapNrChannels;
 
@@ -67,6 +71,35 @@ float inputLastTime = 0.0f;
 // Scene objects
 std::vector<GameObject*> gameObjects;
 int focusedObject = -1;
+/*******************************************************************************/
+
+void drawObject(Mesh mesh) {
+
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
+        glVertexAttribPointer(0,  3,  GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+        if (mesh.hasTexture()) {
+            glEnableVertexAttribArray(1);
+            glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        }
+
+        // Index buffer
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
+        
+        // Draw the triangles !
+        glDrawElements(
+                    GL_TRIANGLES,      // mode
+                    mesh.getIndicesSize(),    // count
+                    GL_UNSIGNED_SHORT,   // type
+                    (void*)0           // element array buffer offset
+                    );
+        
+
+        glDisableVertexAttribArray(0);
+    }
+
 
 /*******************************************************************************/
 
@@ -165,7 +198,10 @@ int main( void )
     glBindVertexArray(VertexArrayID);
 
     // Create and compile our GLSL program from the shaders
-    GLuint programID = LoadShaders( "vertex_shader.glsl", "fragment_shader.glsl" );
+    GLuint programID = LoadShaders( "shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl" );
+
+    GLuint programBallID = LoadShaders( "shaders/ball_vertex_shader.glsl", "shaders/ball_fragment_shader.glsl" );
+
 
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
@@ -178,6 +214,11 @@ int main( void )
     GLuint texture2 = loadTexture(TEXTURE_MID_PATH);
     GLuint texture3 = loadTexture(TEXTURE_HIGH_PATH);
 
+    GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
+
+
+
+
     GLuint vertexbuffer;
     glGenBuffers(1, &vertexbuffer);
     GLuint texturebuffer;
@@ -187,10 +228,11 @@ int main( void )
 
     setScene();
     int terrain = 0;
-    int sun = 1;
 
     // For speed computation
     lastFrame = glfwGetTime();
+
+
     
     float currentTime = glfwGetTime();
     float inputDeltaTime = currentTime - inputLastTime;
@@ -210,6 +252,48 @@ int main( void )
 
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
+
+
+        //===========Gestion Camera ============================================================
+        glm::mat4 model = glm::mat4(1.0f);
+
+        // View matrix : camera/view transformation lookat() utiliser camera_position camera_target camera_up
+        glm::mat4 view = glm::lookAt(
+            camera_position,
+            camera_target + camera_position,
+            camera_up
+        );
+
+        // Projection matrix : 45 Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+
+        // Send our transformation to the currently bound shader,
+        // in the "Model View Projection" to the shader uniforms
+        glm::mat4 mvp = projection * view * model;
+
+        //================================================================================
+
+
+        //2nd shader
+
+        glUseProgram(programBallID);
+
+        glActiveTexture(GL_TEXTURE0 + 0);
+        glBindTexture(GL_TEXTURE_2D, texture_earth);
+        glUniform1i(glGetUniformLocation(programBallID, "texture_earth"), 0);
+
+        GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
+        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+
+        for(int i = 2; i < gameObjects.size(); i++){
+            Mesh sp = gameObjects[i]->mesh;
+            drawObject(sp);
+        }
+
+
 
         // Use our shader
         glUseProgram(programID);
@@ -231,76 +315,13 @@ int main( void )
         glBindTexture(GL_TEXTURE_2D, texture3);
         glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
 
-        for (int i = 0; i < gameObjects.size(); i++) {
-            if (i == 0) {
-                glUniform1i(glGetUniformLocation(programID, "useHeight"), 1);
-            } else {
-                glUniform1i(glGetUniformLocation(programID, "useHeight"), 0);
-            }
+        glUniform1i(glGetUniformLocation(programID, "useHeight"), 1);
 
-            if (i == focusedObject) {
-                glUniform1i(glGetUniformLocation(programID, "isFocused"), 1);
-            } else {
-                glUniform1i(glGetUniformLocation(programID, "isFocused"), 0);
-            }
+        //GLuint mvp_uniform = glGetUniformLocation(programID, "MVP");
+        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-            if (i != terrain) {
-                float adjustedHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-                gameObjects[i]->translate(glm::vec3(0.0, -adjustedHeight, 0.0));
-                gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, -1.0, 0.0));
-            }
-            
-            glm::mat4 model = gameObjects[i]->getTransformation();
-
-            // View matrix : camera/view transformation lookat() utiliser camera_position camera_target camera_up
-            glm::mat4 view = glm::lookAt(
-                camera_position,
-                camera_target + camera_position,
-                camera_up
-            );
-
-            // Projection matrix : 45 Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-            glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-
-            // Send our transformation to the currently bound shader,
-            // in the "Model View Projection" to the shader uniforms
-            glm::mat4 mvp = projection * view * model;
-            GLuint mvp_uniform = glGetUniformLocation(programID, "MVP");
-            glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
-
-            Mesh mesh = gameObjects[i]->mesh;
-            if(gameObjects[i]->hasLowMesh) {
-                float cameraDistance = glm::length(camera_position - gameObjects[i]->transform.position);
-                std::cout << cameraDistance << std::endl;
-                if (cameraDistance > DISTANCE_LOW_RESOLUTION) {
-                    mesh = gameObjects[i]->low_mesh;
-                }
-            }
-
-            // 1rst attribute buffer : vertices
-            glEnableVertexAttribArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
-            glVertexAttribPointer(0,  3,  GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-            if (mesh.hasTexture()) {
-                glEnableVertexAttribArray(1);
-                glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            }
-
-            // Index buffer
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
-            
-            // Draw the triangles !
-            glDrawElements(
-                        GL_TRIANGLES,      // mode
-                        mesh.getIndicesSize(),    // count
-                        GL_UNSIGNED_SHORT,   // type
-                        (void*)0           // element array buffer offset
-                        );
-        }
-
-        glDisableVertexAttribArray(0);
+        Mesh terrain = gameObjects[0]->mesh;
+        drawObject(terrain);
 
         // Swap buffers
         glfwSwapBuffers(window);
@@ -329,9 +350,6 @@ int main( void )
 }
 
 
-
-
-
 Mesh loadModel(std::string filename) {
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
@@ -356,21 +374,26 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void setScene() {
     GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
     gameObjects.push_back(surface);
-    surface->translate(glm::vec3(-5.0, 0.0, -5.0));
+    surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
     
-    std::string sphereMeshFilename("../models/suzanne.off");
-    std::string sphereMeshLowFilename("../models/sphere.off");
+    std::string sphereMeshFilename("../models/sphere.off");
+    std::string sphereMeshLowFilename("../models/suzanne.off");
 
     Mesh sphereMesh = loadModel(sphereMeshFilename);
     Mesh sphereLowMesh = loadModel(sphereMeshLowFilename);
 
     GameObject* sphere = new GameObject(sphereMesh);
-    sphere->setLowMesh(sphereLowMesh);
-
-    sphere->translate(glm::vec3(0.0, 1.0, 0.0));
+    sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
+    sphere->setTexCoordForSphere();
+    sphere->mesh.loadBuffers();
     gameObjects.push_back(sphere);
 
-    GameObject* sphere2 = new GameObject(sphereMesh);
-    sphere2->translate(glm::vec3(0.0, 5.0, 0.0));
+    GameObject* sphere2 = new GameObject(sphereLowMesh);
+    sphere2->setTexCoordForSphere();
+    sphere2->translate(glm::vec3(0.3f, 5.0f, 0.0f));
+    sphere2->scale(glm::vec3(1.5f, 1.5f, 1.5f));
+    sphere2->mesh.loadBuffers();
     gameObjects.push_back(sphere2);
+
+
 }

@@ -75,7 +75,7 @@ public:
     };
     
     float adjustHeight(GameObject* object) {
-        glm::vec3 position = (object->transform.position - transform.position);
+        glm::vec3 position = (object->transform.position - transform.position) ;
 
         if (position[0] > mesh.maxVertex[0] || position[1] > mesh.maxVertex[1] || position[2] > mesh.maxVertex[2]) {
             // std::cout << "Outiside or over" << std::endl;
@@ -101,6 +101,11 @@ public:
             return 0;
         }
     };
+
+
+    void setTexCoordForSphere(){
+        mesh.setTexCoordForSphere();
+    }
 };
 
 
