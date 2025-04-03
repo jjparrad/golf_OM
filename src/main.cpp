@@ -247,6 +247,7 @@ int main( void )
             if (i != terrain) {
                 float adjustedHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
                 gameObjects[i]->translate(glm::vec3(0.0, -adjustedHeight, 0.0));
+                gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, -1.0, 0.0));
             }
             
             glm::mat4 model = gameObjects[i]->getTransformation();
@@ -416,4 +417,8 @@ void setScene() {
 
     sphere->translate(glm::vec3(0.0, 1.0, 0.0));
     gameObjects.push_back(sphere);
+
+    GameObject* sphere2 = new GameObject(sphereMesh);
+    sphere2->translate(glm::vec3(0.0, 5.0, 0.0));
+    gameObjects.push_back(sphere2);
 }

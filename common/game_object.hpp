@@ -13,12 +13,14 @@
 
 #include "mesh.hpp"
 #include "transform.hpp"
+#include "rigid_body.hpp"
 
 class GameObject
 {
 public:
     Transform transform;
     Mesh mesh;
+    RigidBody rigidBody;
     Mesh low_mesh;
 
     bool hasLowMesh = false;
@@ -28,7 +30,10 @@ public:
 
     // Constructor / Clone
     GameObject();
-    GameObject(Mesh& new_mesh) : mesh(new_mesh) {};
+    GameObject(Mesh& new_mesh) : mesh(new_mesh) {
+        rigidBody.transform = &transform;
+    };
+    
     GameObject clone() const;
 
     void addChild(GameObject* o) {
