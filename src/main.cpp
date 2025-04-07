@@ -62,7 +62,6 @@ float lastFrame = 0.0f;
 float inputLastTime = 0.0f;
 
 // Surface settings
-int NVertexPerSide = 50;
 float SURFACE_DISTANCE_DELTA = 0.1;
 
 // Scene objects
@@ -250,10 +249,8 @@ int main( void )
             if (i != terrain) {
                 float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
                 if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
-                    std::cout << "applyGravity" << std::endl;
                     gameObjects[i]->applyGravity(deltaTime);
                 } else if (terrainHeight > transform->position[1] + SURFACE_DISTANCE_DELTA) {
-                    std::cout << "not applyGravity" << std::endl;
                     transform->setYPosition(terrainHeight);
                 }
                 // gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, 0.0, 1.0));
