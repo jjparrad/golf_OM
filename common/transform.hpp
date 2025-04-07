@@ -25,6 +25,7 @@ public:
         glm::mat4 m(1);
         m = glm::translate(m, position);
         m = glm::scale(m, scale);
+        // TODO: Implement rotation
 
         return m;
     };
@@ -49,16 +50,6 @@ public:
     void rotate(float angle, const glm::vec3 &axis) {
         rotation = glm::rotate(rotation, angle, axis);
     };
-
-    glm::vec4 apply(glm::vec4 p);
-
-    glm::vec3 applyToPoint(glm::vec3 p);
-    glm::vec3 applyToVector(glm::vec3 v);
-    glm::vec3 applyToVersor(glm::vec3 v);
-
-    Transform combine_with(Transform & t);
-    Transform inverse();
-    Transform interpolate_with(Transform & t, float k);
 
     void check() {
         std::cout << "Transform alive" << std::endl;
