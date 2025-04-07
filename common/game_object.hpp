@@ -83,12 +83,8 @@ public:
         float zMin = mesh.minVertex.z;
         float zMax = mesh.maxVertex.z;
 
-        std::cout << "Object position (global): " << object->transform.position.x << ", " << object->transform.position.y << ", " << object->transform.position.z << std::endl;
-        std::cout << "Object position (local to terrain): " << localPosition.x << ", " << localPosition.y << ", " << localPosition.z << std::endl;
-
         if (localPosition.x < xMin || localPosition.x > xMax ||
             localPosition.z < zMin || localPosition.z > zMax) {
-            std::cout << "Not in surface" << std::endl;
             return object->transform.position.y;
         }
 
