@@ -61,8 +61,9 @@ float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 float inputLastTime = 0.0f;
 
-
-
+// Surface settings
+int NVertexPerSide = 50;
+float SURFACE_DISTANCE_DELTA = 0.1;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
@@ -244,10 +245,18 @@ int main( void )
                 glUniform1i(glGetUniformLocation(programID, "isFocused"), 0);
             }
 
+            Transform* transform = &gameObjects[i]->transform;
+
             if (i != terrain) {
-                float adjustedHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-                gameObjects[i]->translate(glm::vec3(0.0, -adjustedHeight, 0.0));
-                gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, -1.0, 0.0));
+                float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
+                if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
+                    std::cout << "applyGravity" << std::endl;
+                    gameObjects[i]->applyGravity(deltaTime);
+                } else if (terrainHeight > transform->position[1] + SURFACE_DISTANCE_DELTA) {
+                    std::cout << "not applyGravity" << std::endl;
+                    transform->setYPosition(terrainHeight);
+                }
+                // gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, 0.0, 1.0));
             }
             
             glm::mat4 model = gameObjects[i]->getTransformation();
@@ -271,7 +280,6 @@ int main( void )
             Mesh mesh = gameObjects[i]->mesh;
             if(gameObjects[i]->hasLowMesh) {
                 float cameraDistance = glm::length(camera_position - gameObjects[i]->transform.position);
-                std::cout << cameraDistance << std::endl;
                 if (cameraDistance > DISTANCE_LOW_RESOLUTION) {
                     mesh = gameObjects[i]->low_mesh;
                 }
@@ -361,16 +369,16 @@ void setScene() {
     std::string sphereMeshFilename("../models/suzanne.off");
     std::string sphereMeshLowFilename("../models/sphere.off");
 
-    Mesh sphereMesh = loadModel(sphereMeshFilename);
-    Mesh sphereLowMesh = loadModel(sphereMeshLowFilename);
-
+    Mesh sphereMesh = loadModel(sphereMeshLowFilename);
     GameObject* sphere = new GameObject(sphereMesh);
-    sphere->setLowMesh(sphereLowMesh);
+    sphere->setLowMesh(sphereMesh);
 
     sphere->translate(glm::vec3(0.0, 1.0, 0.0));
+    sphere->scale(glm::vec3(0.2, 0.2, 0.2));
     gameObjects.push_back(sphere);
 
     GameObject* sphere2 = new GameObject(sphereMesh);
-    sphere2->translate(glm::vec3(0.0, 5.0, 0.0));
+
+    sphere2->translate(glm::vec3(0.0, 1.0, 2.0));
     gameObjects.push_back(sphere2);
 }

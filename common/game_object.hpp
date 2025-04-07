@@ -24,6 +24,7 @@ public:
     Mesh low_mesh;
 
     bool hasLowMesh = false;
+    bool useGravity = true;
     
     std::vector<GameObject*> children;
     GameObject* parent = nullptr;
@@ -52,9 +53,9 @@ public:
 
     glm::mat4 getTransformation() {
         if (parent == nullptr) {
-            return transform.m;
+            return transform.getMatrix();
         } else {
-            return parent->getTransformation() * transform.m;
+            return parent->getTransformation() * transform.getMatrix();
         }
     };
 
@@ -63,7 +64,7 @@ public:
     };
 
     void scale(const glm::vec3 &scale) {
-        transform.scale(scale);
+        transform.applyScale(scale);
     };
 
     void rotate(float angle, const glm::vec3 &axis) {
@@ -73,32 +74,33 @@ public:
     void check() {
         std::cout << "GameObject alive" << std::endl;
     };
-    
+
     float adjustHeight(GameObject* object) {
-        glm::vec3 position = (object->transform.position - transform.position);
+        glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
 
-        if (position[0] > mesh.maxVertex[0] || position[1] > mesh.maxVertex[1] || position[2] > mesh.maxVertex[2]) {
-            // std::cout << "Outiside or over" << std::endl;
-            return 0;
+        float xMin = mesh.minVertex.x;
+        float xMax = mesh.maxVertex.x;
+        float zMin = mesh.minVertex.z;
+        float zMax = mesh.maxVertex.z;
+
+        std::cout << "Object position (global): " << object->transform.position.x << ", " << object->transform.position.y << ", " << object->transform.position.z << std::endl;
+        std::cout << "Object position (local to terrain): " << localPosition.x << ", " << localPosition.y << ", " << localPosition.z << std::endl;
+
+        if (localPosition.x < xMin || localPosition.x > xMax ||
+            localPosition.z < zMin || localPosition.z > zMax) {
+            std::cout << "Not in surface" << std::endl;
+            return object->transform.position.y;
         }
 
-        if (position[0] < mesh.minVertex[0] || position[2] < mesh.minVertex[2]) {
-            // std::cout << "Outside" << std::endl;
-            return 0;
-        }
+        float localHeight = mesh.getHeightInPosition(localPosition);
+        float globalHeight = localHeight + transform.position.y;
 
-        float xMin = mesh.minVertex[0];
-        float xMax = mesh.maxVertex[0];
-        
-        float zMin = mesh.minVertex[2];
-        float zMax = mesh.maxVertex[2];
+        return globalHeight;
+    };
 
-        float transformedHeight = mesh.getHeightInPosition(position);
-
-        if (transformedHeight > position[1]) {
-            return position[1] - transformedHeight;
-        } else {
-            return 0;
+    void applyGravity(float time) {
+        if (useGravity) {
+            rigidBody.applyGravity(time);
         }
     };
 };

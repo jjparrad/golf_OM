@@ -11,27 +11,43 @@
 
 class Transform {
 public:
-    glm::mat4 m;
     glm::vec3 position;
-    glm::vec3 size;
+    glm::vec3 scale;
+    glm::mat4 rotation;
 
     Transform() {
-        m = glm::mat4(1);
-        position = glm::vec3(0.0, 0.0, 0.0);
+        position = glm::vec3(0.0);
+        scale = glm::vec3(1.0);
+        rotation = glm::mat4(1.0);
     };
 
-    void scale(const glm::vec3 &scale) {
-        size = scale;
+    glm::mat4 getMatrix() {
+        glm::mat4 m(1);
+        m = glm::translate(m, position);
         m = glm::scale(m, scale);
+
+        return m;
+    };
+
+    void applyScale(const glm::vec3 &newScale) {
+        scale *= newScale;
     };
 
     void translate(const glm::vec3 &translation) {
         position += translation;
-        m = glm::translate(m, translation);
+    };
+
+    void setYPosition(float y) {
+        glm::vec3 newPosition = glm::vec3( position.x, y, position.z);
+        setPosition(newPosition);
+    };
+
+    void setPosition(const glm::vec3 &newPosition) {
+        position = newPosition;
     };
 
     void rotate(float angle, const glm::vec3 &axis) {
-        m = glm::rotate(m, angle, axis);
+        rotation = glm::rotate(rotation, angle, axis);
     };
 
     glm::vec4 apply(glm::vec4 p);
