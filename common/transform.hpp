@@ -53,9 +53,17 @@ public:
 
     glm::vec4 apply(glm::vec4 p);
 
-    glm::vec3 applyToPoint(glm::vec3 p) {
+    glm::mat4 getMatrix() const {
+        glm::mat4 mat = glm::mat4(1.0f);
+        mat = glm::translate(mat, position);
+        mat = mat * rotation; // rotation est une matrice déjà
+        mat = glm::scale(mat, scale);
+        return mat;
+    }
+
+    glm::vec3 applyToPoint(const glm::vec3 &p) const {
         glm::vec4 p4(p, 1.0f);
-        glm::vec4 transformed = m * p4;
+        glm::vec4 transformed = getMatrix() * p4;
         return glm::vec3(transformed);
     }
     

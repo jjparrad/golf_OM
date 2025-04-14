@@ -14,22 +14,20 @@ uniform sampler2D heightmap;
 out vec4 color;
 
 void main() {
-    if (fragUseHeight == 1) {
-        vec4 grass = texture(textureImgLow, textureCoords);
-        vec4 rock = texture(textureImgMid, textureCoords);
-        vec4 snow = texture(textureImgHigh, textureCoords);
+
+    vec4 grass = texture(textureImgLow, textureCoords);
+    vec4 rock = texture(textureImgMid, textureCoords);
+    vec4 snow = texture(textureImgHigh, textureCoords);
 
 
-        float grassHeight = smoothstep(0.0, 0.3, height);
-        float rockHeight = smoothstep(0.3, 0.4, height);
-        float snowHeight = smoothstep(0.4, 1.0, height); 
+    float grassHeight = smoothstep(0.0, 0.3, height);
+    float rockHeight = smoothstep(0.3, 0.4, height);
+    float snowHeight = smoothstep(0.4, 1.0, height); 
 
-        vec4 grassRock = mix(grass, rock, grassHeight);
-        vec4 rockSnow = mix(rock, snow, rockHeight);
-        color = mix(grassRock, rockSnow, snowHeight);
-    } else {
-        color = vec4(1.0, textureCoords, 1.0);
-    }
+    vec4 grassRock = mix(grass, rock, grassHeight);
+    vec4 rockSnow = mix(rock, snow, rockHeight);
+    color = mix(grassRock, rockSnow, snowHeight);
+    
 
     if (fragFocus == 1) {
         color = vec4(1.0, 1.0, 0.2, 1.0);

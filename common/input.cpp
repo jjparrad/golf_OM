@@ -83,7 +83,7 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target += (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0.1, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0, -0.1));
             
         }
     }
@@ -92,7 +92,7 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target -= (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(0, -0.1, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0, 0.1));
             
         }
     }

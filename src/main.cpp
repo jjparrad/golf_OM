@@ -66,7 +66,7 @@ float lastFrame = 0.0f;
 float inputLastTime = 0.0f;
 
 // Surface settings
-float SURFACE_DISTANCE_DELTA = 0.1;
+float SURFACE_DISTANCE_DELTA = 0.5;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
@@ -239,154 +239,118 @@ int main( void )
     inputLastTime = currentTime;
 
     int nbFrames = 0;
-    do {
-        // Measure speed
-        // per-frame time logic
-        // --------------------
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        
-        // input
-        processInput(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up, focusedObject, gameObjects);
+do {
+    // Measure speed
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
 
-        // Clear the screen
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // input
+    processInput(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up, focusedObject, gameObjects);
 
+    // Clear the screen
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
-
-        //===========Gestion Camera ============================================================
-        glm::mat4 model = glm::mat4(1.0f);
-
-        // View matrix : camera/view transformation lookat() utiliser camera_position camera_target camera_up
-        glm::mat4 view = glm::lookAt(
-            camera_position,
-            camera_target + camera_position,
-            camera_up
-        );
-
-        // Projection matrix : 45 Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-
-        // Send our transformation to the currently bound shader,
-        // in the "Model View Projection" to the shader uniforms
-        glm::mat4 mvp = projection * view * model;
-
-        //================================================================================
+    //=========== Gestion Camera ================
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    glm::mat4 mvp = projection * view * model;
 
 
-        //2nd shader
 
-        glUseProgram(programBallID);
+    //========= 1er shader ===============
+    glUseProgram(programID);
 
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, texture_earth);
-        glUniform1i(glGetUniformLocation(programBallID, "texture_earth"), 0);
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, textureHeightmap);
+    glUniform1i(glGetUniformLocation(programID, "heightmap"), 0);
 
-        GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
-        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    glUniform1i(glGetUniformLocation(programID, "textureImgLow"), 1);
 
-        for(int i = 1; i < gameObjects.size(); i++){
-            Mesh sp = gameObjects[i]->mesh;
-            drawObject(sp);
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glBindTexture(GL_TEXTURE_2D, texture2);
+    glUniform1i(glGetUniformLocation(programID, "textureImgMid"), 2);
+
+    glActiveTexture(GL_TEXTURE0 + 3);
+    glBindTexture(GL_TEXTURE_2D, texture3);
+    glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
+
+
+    model = gameObjects[0]->getTransformation();
+    view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    mvp = projection * view * model;
+
+    glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE, &mvp[0][0]);
+
+
+    glUniform1i(glGetUniformLocation(programID, "isFocused"), 0 == focusedObject ? 1 : 0);
+    Mesh terrainMesh = gameObjects[0]->mesh;
+    drawObject(terrainMesh);
+
+    printf("focusedObject :%d \n",focusedObject);
+
+
+
+    //========= 2nd shader ============
+    glUseProgram(programBallID);
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, texture_earth);
+    glUniform1i(glGetUniformLocation(programBallID, "texture_earth"), 0);
+
+    GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
+    glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+
+
+    for (int i = 1; i < gameObjects.size(); i++) {
+
+        glUniform1i(glGetUniformLocation(programBallID, "useHeight"), i == 0 ? 1 : 0);
+        glUniform1i(glGetUniformLocation(programBallID, "isFocused"), i == focusedObject ? 1 : 0);
+    
+        Transform* transform = &gameObjects[i]->transform;
+
+        if (i != terrain) {
+            float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
+            if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
+                gameObjects[i]->applyGravity(deltaTime);
+            } else if (terrainHeight > transform->position[1] + SURFACE_DISTANCE_DELTA) {
+                transform->setYPosition(terrainHeight);
+            }
         }
 
+        glm::mat4 model = gameObjects[i]->getTransformation();
+        glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+        glm::mat4 mvp = projection * view * model;
+        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-
-        // Use our shader
-        glUseProgram(programID);
-
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, textureHeightmap);
-        glUniform1i(glGetUniformLocation(programID, "heightmap"), 0);
-
-        glActiveTexture(GL_TEXTURE0 + 1);  
-        // glBindTexture(GL_TEXTURE_2D, textureHeightmap);
-        glBindTexture(GL_TEXTURE_2D, texture1);
-        glUniform1i(glGetUniformLocation(programID, "textureImgLow"), 1);
-
-        glActiveTexture(GL_TEXTURE0 + 2);  
-        glBindTexture(GL_TEXTURE_2D, texture2);
-        glUniform1i(glGetUniformLocation(programID, "textureImgMid"), 2);
-
-        glActiveTexture(GL_TEXTURE0 + 3);  
-        glBindTexture(GL_TEXTURE_2D, texture3);
-        glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
-
-        for (int i = 0; i < gameObjects.size(); i++) {
-            if (i == 0) {
-                glUniform1i(glGetUniformLocation(programID, "useHeight"), 1);
-            } else {
-                glUniform1i(glGetUniformLocation(programID, "useHeight"), 0);
-            }
-
-            if (i == focusedObject) {
-                glUniform1i(glGetUniformLocation(programID, "isFocused"), 1);
-            } else {
-                glUniform1i(glGetUniformLocation(programID, "isFocused"), 0);
-            }
-
-            Transform* transform = &gameObjects[i]->transform;
-
-            if (i != terrain) {
-                float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-                if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
-                    gameObjects[i]->applyGravity(deltaTime);
-                } else if (terrainHeight > transform->position[1] + SURFACE_DISTANCE_DELTA) {
-                    transform->setYPosition(terrainHeight);
-                }
-                // gameObjects[i]->rigidBody.applySpeed(deltaTime, glm::vec3(0.0, 0.0, 1.0));
-            }
-            
-            glm::mat4 model = gameObjects[i]->getTransformation();
-
-            // View matrix : camera/view transformation lookat() utiliser camera_position camera_target camera_up
-            glm::mat4 view = glm::lookAt(
-                camera_position,
-                camera_target + camera_position,
-                camera_up
-            );
-
-            // Projection matrix : 45 Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-            glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-
-            // Send our transformation to the currently bound shader,
-            // in the "Model View Projection" to the shader uniforms
-            glm::mat4 mvp = projection * view * model;
-            GLuint mvp_uniform = glGetUniformLocation(programID, "MVP");
-            glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
-
-        Mesh terrain = gameObjects[0]->mesh;
-        drawObject(terrain);
-
-        // Swap buffers
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-
-    } // Check if the ESC key was pressed or the window was closed
-    while(glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-           glfwWindowShouldClose(window) == 0 );
-
-
-    for (int i = 0; i < gameObjects.size(); i++) {
-        // Cleanup VBO and shader
-        Mesh mesh = gameObjects[i]->mesh;
-        glDeleteBuffers(1, &mesh.vertexbuffer);
-        glDeleteBuffers(1, &mesh.texturebuffer);
-        glDeleteBuffers(1, &mesh.elementbuffer);
+        Mesh sp = gameObjects[i]->mesh;
+        drawObject(sp);
     }
 
-    glDeleteProgram(programID);
-    glDeleteVertexArrays(1, &VertexArrayID);
+    // Swap buffers
+    glfwSwapBuffers(window);
+    glfwPollEvents();
 
-    // Close OpenGL window and terminate GLFW
-    glfwTerminate();
+} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+         glfwWindowShouldClose(window) == 0);
 
-    return 0;
+// ========= Cleanup ============
+for (int i = 0; i < gameObjects.size(); i++) {
+    Mesh mesh = gameObjects[i]->mesh;
+    glDeleteBuffers(1, &mesh.vertexbuffer);
+    glDeleteBuffers(1, &mesh.texturebuffer);
+    glDeleteBuffers(1, &mesh.elementbuffer);
 }
 
+glDeleteProgram(programID);
+glDeleteVertexArrays(1, &VertexArrayID);
+glfwTerminate();
+return 0;
+}
 
 Mesh loadModel(std::string filename) {
     std::vector<unsigned short> indices;
@@ -418,19 +382,22 @@ void setScene() {
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
 
-    Mesh sphereMesh = loadModel(sphereMeshLowFilename);
+    Mesh sphereMesh = loadModel(sphereMeshFilename);
+
     GameObject* sphere = new GameObject(sphereMesh);
     sphere->translate(glm::vec3(5.0f, 1.0f, 0.0f));
     sphere->setTexCoordForSphere();
-    sphere->scale(glm::vec3(1.5f, 1.5f, 1.5f));
-    sphere->applytransform();
+    sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+    sphere->mesh.loadBuffers();
+    //sphere->applytransform();
     gameObjects.push_back(sphere);
 
-    GameObject* sphere2 = new GameObject(sphereLowMesh);
+    GameObject* sphere2 = new GameObject(sphereMesh);
     sphere2->setTexCoordForSphere();
     sphere2->translate(glm::vec3(0.3f, 5.0f, 0.0f));
     sphere2->scale(glm::vec3(1.5f, 1.5f, 1.5f));
-    sphere2->applytransform();
+    sphere2->mesh.loadBuffers();
+    //sphere2->applytransform();
     gameObjects.push_back(sphere2);
 
 
