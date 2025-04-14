@@ -376,7 +376,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 void setScene() {
     GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
     gameObjects.push_back(surface);
-    surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
+    surface->translate(glm::vec3(-2.0f, 0.0f, -1.0f));
     surface->applytransform();
     
     std::string sphereMeshFilename("../models/sphere.off");
