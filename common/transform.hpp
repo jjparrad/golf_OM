@@ -36,7 +36,12 @@ public:
 
     glm::vec4 apply(glm::vec4 p);
 
-    glm::vec3 applyToPoint(glm::vec3 p);
+    glm::vec3 applyToPoint(glm::vec3 p) {
+        glm::vec4 p4(p, 1.0f);
+        glm::vec4 transformed = m * p4;
+        return glm::vec3(transformed);
+    }
+    
     glm::vec3 applyToVector(glm::vec3 v);
     glm::vec3 applyToVersor(glm::vec3 v);
 

@@ -198,9 +198,9 @@ int main( void )
     glBindVertexArray(VertexArrayID);
 
     // Create and compile our GLSL program from the shaders
-    GLuint programID = LoadShaders( "shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl" );
+    GLuint programID = LoadShaders( "../src/shaders/vertex_shader.glsl", "../src/shaders/fragment_shader.glsl" );
 
-    GLuint programBallID = LoadShaders( "shaders/ball_vertex_shader.glsl", "shaders/ball_fragment_shader.glsl" );
+    GLuint programBallID = LoadShaders( "../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl" );
 
 
     std::vector<unsigned short> indices;
@@ -288,7 +288,7 @@ int main( void )
         GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
         glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-        for(int i = 2; i < gameObjects.size(); i++){
+        for(int i = 1; i < gameObjects.size(); i++){
             Mesh sp = gameObjects[i]->mesh;
             drawObject(sp);
         }
@@ -375,6 +375,7 @@ void setScene() {
     GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
     gameObjects.push_back(surface);
     surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
+    surface->applytransform();
     
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
@@ -383,16 +384,17 @@ void setScene() {
     Mesh sphereLowMesh = loadModel(sphereMeshLowFilename);
 
     GameObject* sphere = new GameObject(sphereMesh);
-    sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
+    sphere->translate(glm::vec3(5.0f, 1.0f, 0.0f));
     sphere->setTexCoordForSphere();
-    sphere->mesh.loadBuffers();
+    sphere->scale(glm::vec3(1.5f, 1.5f, 1.5f));
+    sphere->applytransform();
     gameObjects.push_back(sphere);
 
     GameObject* sphere2 = new GameObject(sphereLowMesh);
     sphere2->setTexCoordForSphere();
     sphere2->translate(glm::vec3(0.3f, 5.0f, 0.0f));
     sphere2->scale(glm::vec3(1.5f, 1.5f, 1.5f));
-    sphere2->mesh.loadBuffers();
+    sphere2->applytransform();
     gameObjects.push_back(sphere2);
 
 

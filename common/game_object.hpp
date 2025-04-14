@@ -106,6 +106,23 @@ public:
     void setTexCoordForSphere(){
         mesh.setTexCoordForSphere();
     }
+
+
+    void applytransform(){
+        for (auto &v : mesh.vertices){
+            v = transform.applyToPoint(v);
+        }
+        mesh.loadBuffers();
+    }
+
+    void applytranslate(const glm::vec3 &vec){
+        transform.translate(vec);
+        for (auto &v : mesh.vertices){
+            v = v + vec;
+        }
+        mesh.loadBuffers();
+
+    }
 };
 
 
