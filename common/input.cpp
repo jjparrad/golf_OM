@@ -83,7 +83,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target += (0.5f * cameraSpeed) * camera_up;
         } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0.1, 0));
+            
         }
     }
 
@@ -91,7 +92,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target -= (0.5f * cameraSpeed) * camera_up;
         } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(0, -0.1, 0));
+            
         }
     }
 
@@ -100,7 +102,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target -= (0.5f * cameraSpeed) * left;
         } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(0.1, 0, 0));
+            
         }
     }
 
@@ -109,7 +112,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target += (0.5f * cameraSpeed) * left;
         } else {
-            //gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
+            gameObjects[focusedObject]->applytranslate(glm::vec3(-0.1, 0, 0));
+        
         }
     }
 }
