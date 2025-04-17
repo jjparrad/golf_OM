@@ -23,38 +23,22 @@ void processWASD(GLFWwindow *window,float deltaTime, float currentFrame, glm::ve
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
-        if (focusedObject == -1) {
-            camera_position += cameraSpeed * a;
-        } else {
-            gameObjects[focusedObject]->translate(a * glm::vec3(0.1));
-        }
+        camera_position += cameraSpeed * a;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
-        if (focusedObject == -1) {
-            camera_position -= cameraSpeed * a;
-        } else {
-            gameObjects[focusedObject]->translate(a * glm::vec3(-0.1));
-        }
+        camera_position -= cameraSpeed * a;
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         glm::vec3 left = glm::cross(camera_up, camera_target);
-        if (focusedObject == -1) {
-            camera_position -= cameraSpeed * left;
-        } else {
-            gameObjects[focusedObject]->translate(left * glm::vec3(-0.1));
-        }
+        camera_position -= cameraSpeed * left;
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         glm::vec3 left = glm::cross(camera_up, camera_target);
-        if (focusedObject == -1) {
-            camera_position += cameraSpeed * left;
-        } else {
-            gameObjects[focusedObject]->translate(left * glm::vec3(0.1));
-        }
+        camera_position += cameraSpeed * left;
     }
 
 }
@@ -81,40 +65,40 @@ void processSHIFTSPACE(GLFWwindow *window,float deltaTime, float currentFrame, g
 void processARROWS(GLFWwindow *window,float deltaTime, float currentFrame, glm::vec3 &camera_position,glm::vec3 &camera_target,glm::vec3 &camera_up,int &focusedObject, std::vector<GameObject*> gameObjects){
     float cameraSpeed = 2.5 * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
         if (focusedObject == -1) {
             camera_target += (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, 0, -0.1));
-            
+            gameObjects[focusedObject]->translate(a * glm::vec3(0.1));
         }
     }
 
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        glm::vec3 a = glm::vec3(camera_target.x, 0, camera_target.z);
         if (focusedObject == -1) {
             camera_target -= (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, 0, 0.1));
-            
+            gameObjects[focusedObject]->translate(a * glm::vec3(-0.1));
         }
     }
 
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        glm::vec3 left = glm::cross(camera_up, camera_target);
         if (focusedObject == -1) {
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target -= (0.5f * cameraSpeed) * left;
         } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0.1, 0, 0));
-            
+            gameObjects[focusedObject]->translate(left * glm::vec3(-0.1));
         }
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        glm::vec3 left = glm::cross(camera_up, camera_target);
         if (focusedObject == -1) {
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target += (0.5f * cameraSpeed) * left;
         } else {
-            gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
-        
+            gameObjects[focusedObject]->translate(left * glm::vec3(0.1));
         }
     }
 }

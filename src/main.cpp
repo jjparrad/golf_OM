@@ -48,7 +48,8 @@ const char *TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
 // const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_1024x1024.png";
 const char *HEIGHTMAP_PATH = "../assets/textures/heightmap_1.jpg";
 
-const char *TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
+const char *TEXTURE_EARTH_PATH = "../assets/textures/chess.jpg";
+// const char *TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
 
 unsigned char *heightmapData;
 int heightmapWidth, heightmapHeight, heightmapNrChannels;
