@@ -78,34 +78,9 @@ int focusedObject = -1;
 /*******************************************************************************/
 
 void drawObject(Mesh mesh) {
-    // Position
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    // Texture coordinates
-    if (mesh.hasTexture()) {
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    }
-
-    // Normals
-    glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.normalsbuffer);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
-
-    // Draw the triangles
-    glDrawElements(
-        GL_TRIANGLES,
-        mesh.getIndicesSize(),
-        GL_UNSIGNED_SHORT,
-        (void*)0
-    );
-
+    glBindVertexArray(mesh.vaoID);
+    glDrawElements(GL_TRIANGLES, mesh.getIndicesSize(), GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
 }
 /*************************************************************************** */
 
@@ -257,13 +232,15 @@ int main( void )
     glBindVertexArray(VertexArrayID);
 
     // Create and compile our GLSL program from the shaders
-    GLuint programSky = LoadShaders( "../src/shaders/sky_vertex_shader.glsl", "../src/shaders/sky_fragment_shader.glsl" );
+    
 
     GLuint programID = LoadShaders( "../src/shaders/vertex_shader.glsl", "../src/shaders/fragment_shader.glsl" );
 
     GLuint programBallID = LoadShaders( "../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl" );
 
     GLuint programPRB = LoadShaders("../src/shaders/PRB_vertex_shader.glsl", "../src/shaders/PRB_fragment_shader.glsl");
+
+    GLuint programSky = LoadShaders( "../src/shaders/sky_vertex_shader.glsl", "../src/shaders/sky_fragment_shader.glsl" );
 
 
     std::vector<unsigned short> indices;
@@ -280,24 +257,29 @@ int main( void )
     GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
 
     std::vector<std::string> faces{
-        "../assets/cubemap_sky/right.png",   
         "../assets/cubemap_sky/left.png",
+        "../assets/cubemap_sky/back.png",   
         
             
         "../assets/cubemap_sky/up.png",      
         "../assets/cubemap_sky/down.png",
         
-        "../assets/cubemap_sky/back.png",   
+        "../assets/cubemap_sky/right.png",   
         "../assets/cubemap_sky/front.png",   
         
           
     };
+
 
     GLuint textureSky = loadCubemap(faces);
 
     GLuint skyboxVAO, skyboxVBO;
 
 
+    GLint prevVAO;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
+
+    // init skybox VAO
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
     glBindVertexArray(skyboxVAO);
@@ -305,7 +287,9 @@ int main( void )
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glBindVertexArray(0);
+    glBindVertexArray(prevVAO);
+
+
 
 
     GLuint vertexbuffer;
@@ -340,11 +324,35 @@ do {
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+
     //=========== Gestion Camera ================
     glm::mat4 model = glm::mat4(1.0f);
     glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
     glm::mat4 mvp = projection * view * model;
+
+
+    // ========== Rendu skybox ==========
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+    glUseProgram(programSky);
+
+    glm::mat4 viewSky = glm::mat4(glm::mat3(view)); // enlever la translation
+
+    glUniformMatrix4fv(glGetUniformLocation(programSky, "view"), 1, GL_FALSE, &viewSky[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(programSky, "projection"), 1, GL_FALSE, &projection[0][0]);
+
+    // Pas besoin de "model" pour la skybox
+    glBindVertexArray(skyboxVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+
 
 
 
@@ -380,45 +388,6 @@ do {
     Mesh terrainMesh = gameObjects[0]->mesh;
     drawObject(terrainMesh);
 
-    //printf("focusedObject :%d \n",focusedObject);
-
-
-
-    /*//========= 2nd shader ============
-    glUseProgram(programBallID);
-    glActiveTexture(GL_TEXTURE0 + 0);
-    glBindTexture(GL_TEXTURE_2D, texture_earth);
-    glUniform1i(glGetUniformLocation(programBallID, "texture_earth"), 0);
-
-    GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
-    glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
-
-
-    for (int i = 1; i < gameObjects.size(); i++) {
-
-        glUniform1i(glGetUniformLocation(programBallID, "useHeight"), i == 0 ? 1 : 0);
-        glUniform1i(glGetUniformLocation(programBallID, "isFocused"), i == focusedObject ? 1 : 0);
-    
-        Transform* transform = &gameObjects[i]->transform;
-
-        if (i != terrain) {
-            float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-            if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
-                gameObjects[i]->applyGravity(deltaTime);
-            } else if (terrainHeight > transform->position[1] + SURFACE_DISTANCE_DELTA) {
-                transform->setYPosition(terrainHeight);
-            }
-        }
-
-        glm::mat4 model = gameObjects[i]->getTransformation();
-        glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-        glm::mat4 mvp = projection * view * model;
-        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
-
-        Mesh sp = gameObjects[i]->mesh;
-        drawObject(sp);
-    }*/
 
 
     // PRB =====================================================================
@@ -490,26 +459,9 @@ do {
     }
 
 
-    //====== sky shader =============
-    glDepthFunc(GL_LEQUAL);
-    glDepthMask(GL_FALSE);
 
-    glUseProgram(programSky);
 
-    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(view));
-    glUniformMatrix4fv(glGetUniformLocation(programSky, "view"), 1, GL_FALSE, &viewNoTranslation[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(programSky, "projection"), 1, GL_FALSE, &projection[0][0]);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureSky);
-    glUniform1i(glGetUniformLocation(programSky, "skybox"), 0);
-
-    glBindVertexArray(skyboxVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LESS);
+    
 
 
 

@@ -28,6 +28,7 @@ public:
     GLuint texturebuffer;
     GLuint elementbuffer;
     GLuint normalsbuffer;
+    GLuint vaoID;
 
     // Constructor / Clone
     Mesh() = default;
@@ -54,39 +55,40 @@ public:
     };
 
     void loadBuffers() {
-        // Load it into a VBO
-        GLuint newVertexbuffer;
-        glGenBuffers(1, &newVertexbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, newVertexbuffer);
+        glGenVertexArrays(1, &vaoID);
+        glBindVertexArray(vaoID);
+
+        // Vertex buffer
+        glGenBuffers(1, &vertexbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-        
-        // Generate a buffer for the indices as well
-        GLuint newElementbuffer;
-        glGenBuffers(1, &newElementbuffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, newElementbuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0] , GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-        // buffer des normales
-        recomputeNormals();
-        GLuint newNormalbuffer;
-        glGenBuffers(1, &newNormalbuffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, newNormalbuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &normals[0] , GL_STATIC_DRAW);
-
-        normalsbuffer = newNormalbuffer;
-        vertexbuffer = newVertexbuffer;
-        elementbuffer = newElementbuffer;
-
+        // Texture buffer
         if (textureCoords.size() > 0) {
-            // Texture Coords VBO
-            GLuint newTexturebuffer;
-            glGenBuffers(1, &newTexturebuffer);
-            glBindBuffer(GL_ARRAY_BUFFER, newTexturebuffer);
+            glGenBuffers(1, &texturebuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, texturebuffer);
             glBufferData(GL_ARRAY_BUFFER, textureCoords.size() * sizeof(glm::vec2), &textureCoords[0], GL_STATIC_DRAW);
-
-            texturebuffer = newTexturebuffer;
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
         }
-    };
+
+        // Normals
+        recomputeNormals();
+        glGenBuffers(1, &normalsbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, normalsbuffer);
+        glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+        // Indices
+        glGenBuffers(1, &elementbuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+
+        glBindVertexArray(0); // unbind VAO
+    }
     
     int getIndicesSize() {
         return indices.size();
