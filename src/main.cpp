@@ -241,7 +241,7 @@ int main(void) {
     lastFrame = currentFrame;
 
     // input
-    processInput(window, deltaTime, inputLastTime, camera_position,
+    processInput(window, deltaTime, currentFrame, camera_position,
                  camera_target, camera_up, focusedObject, gameObjects);
 
     // Clear the screen
@@ -308,6 +308,12 @@ int main(void) {
         gameObjects[i]->applyGravity(deltaTime);
       } else {
         gameObjects[i]->onGround(deltaTime);
+      }
+
+      bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
+      if (!objectInTerrain) {
+        gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
+        gameObjects[i]->rigidBody.resetVelocity();
       }
       gameObjects[i]->rigidBody.physicsLoop(deltaTime);
 
@@ -376,7 +382,7 @@ void setScene() {
   Mesh sphereMesh = loadModel(sphereMeshFilename);
 
   GameObject *sphere = new GameObject(sphereMesh);
-  sphere->translate(glm::vec3(0.0f, 5.0f, 0.0f));
+  sphere->translate(glm::vec3(-4.5f, 1.0f, 4.5f));
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
   sphere->mesh.loadBuffers();

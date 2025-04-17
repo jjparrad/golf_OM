@@ -53,10 +53,16 @@ public:
         inGround = true;
     }
 
+    void resetVelocity() {
+        currentVelocity = glm::vec3(0.0);
+    }
+
     void hit(float time, glm::vec3 direction, float force) {
-        currentVelocity = direction * force * time;
-        inGround = false;
-        applySpeed(time, currentVelocity);
+        if (inGround) {
+            inGround = false;
+            currentVelocity = direction * force * time;
+            applySpeed(time, currentVelocity);
+        }
     };
 
     void applySpeed(float time, glm::vec3 velocity) {

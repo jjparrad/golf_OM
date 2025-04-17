@@ -75,7 +75,7 @@ public:
         std::cout << "GameObject alive" << std::endl;
     };
 
-    float adjustHeight(GameObject* object) {
+    bool isInBounds(GameObject* object) {
         glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
 
         float xMin = mesh.minVertex.x;
@@ -85,9 +85,15 @@ public:
 
         if (localPosition.x < xMin || localPosition.x > xMax ||
             localPosition.z < zMin || localPosition.z > zMax) {
-            return object->transform.position.y;
+            return false;
         }
 
+        return true;
+    };
+
+    float adjustHeight(GameObject* object) {
+        glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
+        
         float localHeight = mesh.getHeightInPosition(localPosition);
         float globalHeight = localHeight + transform.position.y;
 
