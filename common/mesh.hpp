@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdlib>
-
+#include "common/material.hpp"
 // Include GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -17,13 +17,17 @@ public:
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec2> textureCoords;
+    std::vector<glm::vec3> normals;
 
     glm::vec3 maxVertex;
     glm::vec3 minVertex;
 
+    Material material;
+
     GLuint vertexbuffer;
     GLuint texturebuffer;
     GLuint elementbuffer;
+    GLuint normalsbuffer;
 
     // Constructor / Clone
     Mesh() = default;
@@ -62,6 +66,14 @@ public:
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, newElementbuffer);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0] , GL_STATIC_DRAW);
 
+        // buffer des normales
+        recomputeNormals();
+        GLuint newNormalbuffer;
+        glGenBuffers(1, &newNormalbuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, newNormalbuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &normals[0] , GL_STATIC_DRAW);
+
+        normalsbuffer = newNormalbuffer;
         vertexbuffer = newVertexbuffer;
         elementbuffer = newElementbuffer;
 
@@ -170,8 +182,39 @@ public:
         }
     }
 
+    void recomputeNormals() {
+
+        normals.resize(vertices.size(), glm::vec3(0.0f));
+
+        for (size_t i = 0; i < indices.size(); i += 3) {
+            unsigned int i0 = indices[i];
+            unsigned int i1 = indices[i + 1];
+            unsigned int i2 = indices[i + 2];
+
+            glm::vec3 v0 = vertices[i0];
+            glm::vec3 v1 = vertices[i1];
+            glm::vec3 v2 = vertices[i2];
+
+            glm::vec3 e1 = v1 - v0;
+            glm::vec3 e2 = v2 - v0;
+            glm::vec3 faceNormal = glm::normalize(glm::cross(e1, e2));
+
+            normals[i0] += faceNormal;
+            normals[i1] += faceNormal;
+            normals[i2] += faceNormal;
+        }
+
+        for (size_t i = 0; i < normals.size(); ++i) {
+            normals[i] = glm::normalize(normals[i]);
+        }
+    }
+
+
 
 
 };
+
+
+
 
 #endif // MESH_H

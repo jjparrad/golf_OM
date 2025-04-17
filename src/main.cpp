@@ -28,6 +28,8 @@ GLFWwindow* window;
 #include <common/game_object.hpp>
 #include "common/input.hpp"
 #include "common/surface.hpp"
+#include "common/material.hpp"
+#include "common/light.hpp"
 
 
 Mesh loadModel(std::string filename);
@@ -70,35 +72,40 @@ float SURFACE_DISTANCE_DELTA = 0.5;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
+std::vector<Light> lights;
 int focusedObject = -1;
 /*******************************************************************************/
 
 void drawObject(Mesh mesh) {
+    // Position
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
-        glVertexAttribPointer(0,  3,  GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-        if (mesh.hasTexture()) {
-            glEnableVertexAttribArray(1);
-            glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        }
-
-        // Index buffer
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
-        
-        // Draw the triangles !
-        glDrawElements(
-                    GL_TRIANGLES,      // mode
-                    mesh.getIndicesSize(),    // count
-                    GL_UNSIGNED_SHORT,   // type
-                    (void*)0           // element array buffer offset
-                    );
-        
-
-        glDisableVertexAttribArray(0);
+    // Texture coordinates
+    if (mesh.hasTexture()) {
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
     }
+
+    // Normals
+    glEnableVertexAttribArray(2);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.normalsbuffer);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
+
+    // Draw the triangles
+    glDrawElements(
+        GL_TRIANGLES,
+        mesh.getIndicesSize(),
+        GL_UNSIGNED_SHORT,
+        (void*)0
+    );
+
+}
 
 
 /*******************************************************************************/
@@ -183,7 +190,7 @@ int main( void )
     glfwSetCursorPos(window, SCR_WIDTH/2, SCR_HEIGHT/2);
 
     // Dark blue background
-    glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.2f, 0.0f);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -202,6 +209,8 @@ int main( void )
 
     GLuint programBallID = LoadShaders( "../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl" );
 
+    GLuint programPRB = LoadShaders("../src/shaders/PRB_vertex_shader.glsl", "../src/shaders/PRB_fragment_shader.glsl");
+
 
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
@@ -215,6 +224,8 @@ int main( void )
     GLuint texture3 = loadTexture(TEXTURE_HIGH_PATH);
 
     GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
+
+    
 
 
 
@@ -291,11 +302,11 @@ do {
     Mesh terrainMesh = gameObjects[0]->mesh;
     drawObject(terrainMesh);
 
-    printf("focusedObject :%d \n",focusedObject);
+    //printf("focusedObject :%d \n",focusedObject);
 
 
 
-    //========= 2nd shader ============
+    /*//========= 2nd shader ============
     glUseProgram(programBallID);
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_2D, texture_earth);
@@ -329,7 +340,78 @@ do {
 
         Mesh sp = gameObjects[i]->mesh;
         drawObject(sp);
+    }*/
+
+
+    // PRB =====================================================================
+    glUseProgram(programPRB);
+
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, texture_earth);
+    glUniform1i(glGetUniformLocation(programPRB, "texture_earth"), 0);
+
+    GLuint mvp_uniform = glGetUniformLocation(programPRB, "MVP");
+    glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+
+
+
+
+    GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPosition");
+    GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColor");
+
+    glm::vec3 l_pos = lights[0].pos;
+    glm::vec3 l_col = lights[0].color;
+
+
+
+    glUniform3f(light_pos_uniform, l_pos[0], l_pos[1], l_pos[2]);
+    glUniform3f(light_col_uniform, l_col[0], l_col[1], l_col[2]);
+
+    GLuint cam_pos_uniform = glGetUniformLocation(programPRB, "camPos");
+    glUniform3f(cam_pos_uniform, camera_position[0], camera_position[1], camera_position[2]);
+
+    //printf("%f, %f, %f \n", camera_position[0], camera_position[1], camera_position[2]);
+
+
+    for (int i = 1 ; i < gameObjects.size(); i++){
+
+        Transform* transform = &gameObjects[i]->transform;
+        glm::mat4 model = gameObjects[i]->getTransformation();
+        glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+        glm::mat4 mvp = projection * view * model;
+        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+
+        GLuint modelLoc = glGetUniformLocation(programPRB, "model");
+        GLuint viewLoc = glGetUniformLocation(programPRB, "view");
+        GLuint projLoc = glGetUniformLocation(programPRB, "projection");
+
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, &projection[0][0]);
+
+        Material currentMat = gameObjects[i]->mesh.material;
+
+
+        GLuint metal_f_uniform = glGetUniformLocation(programPRB, "metallic");
+        glUniform1f(metal_f_uniform, currentMat.metal_f);
+
+        GLuint rough_f_uniform = glGetUniformLocation(programPRB, "roughness");
+        glUniform1f(rough_f_uniform, currentMat.rough_f);
+
+        GLuint ao_uniform = glGetUniformLocation(programPRB, "ao");
+        glUniform1f(ao_uniform, currentMat.ao);
+        
+        GLuint albedo_uniform = glGetUniformLocation(programPRB, "albedo");
+        glUniform3f(albedo_uniform, currentMat.albedo[0], currentMat.albedo[1], currentMat.albedo[2]);
+
+
+        Mesh sp = gameObjects[i]->mesh;
+        drawObject(sp);
+
     }
+
+
 
     // Swap buffers
     glfwSwapBuffers(window);
@@ -382,7 +464,14 @@ void setScene() {
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
 
-    Mesh sphereMesh = loadModel(sphereMeshFilename);
+
+
+    Light firstLight = Light(glm::vec3(0,2.5,1.0), glm::vec3(1.0,1.0,1.0));
+    lights.push_back(firstLight);
+
+    Material firstMat = Material( glm::vec3(1.0f,0.0,0.0), 0.2, 0.8, 1.0);
+    Mesh sphereMesh = loadModel(sphereMeshLowFilename);
+    sphereMesh.material = firstMat;
 
     GameObject* sphere = new GameObject(sphereMesh);
     sphere->translate(glm::vec3(5.0f, 1.0f, 0.0f));
@@ -394,8 +483,8 @@ void setScene() {
 
     GameObject* sphere2 = new GameObject(sphereMesh);
     sphere2->setTexCoordForSphere();
-    sphere2->translate(glm::vec3(0.3f, 5.0f, 0.0f));
-    sphere2->scale(glm::vec3(1.5f, 1.5f, 1.5f));
+    sphere2->translate(glm::vec3(0.3f, 2.0f, 0.0f));
+    sphere2->scale(glm::vec3(1.0f, 1.0f, 1.0f));
     sphere2->mesh.loadBuffers();
     //sphere2->applytransform();
     gameObjects.push_back(sphere2);
