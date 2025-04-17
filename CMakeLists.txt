@@ -68,8 +68,10 @@ add_executable(main
 	common/vboindexer.hpp
 	common/input.cpp
 	
-        src/vertex_shader.glsl
-        src/fragment_shader.glsl
+	src/shaders/vertex_shader.glsl
+	src/shaders/fragment_shader.glsl
+	src/shaders/ball_vertex_shader.glsl
+	src/shaders/ball_fragment_shader.glsl
 )
 target_link_libraries(main
 	${ALL_LIBS}
