@@ -24,7 +24,7 @@ public:
     Mesh low_mesh;
 
     bool hasLowMesh = false;
-    bool useGravity = true;
+    bool usePhysics = true;
     
     std::vector<GameObject*> children;
     GameObject* parent = nullptr;
@@ -95,37 +95,21 @@ public:
     };
 
     void applyGravity(float time) {
-        if (useGravity) {
+        if (usePhysics) {
             rigidBody.applyGravity(time);
         }
     };
 
+    void onGround(float time) {
+        if (usePhysics) {
+            rigidBody.slowDown(time);
+        }
+    };
     
     void setTexCoordForSphere(){
         mesh.setTexCoordForSphere();
-    }
-
-
-    void applytransform(){
-        for (auto &v : mesh.vertices){
-            v = transform.applyToPoint(v);
-        }
-        mesh.loadBuffers();
-    }
-
-    void applytranslate(const glm::vec3 &vec){
-        transform.translate(vec);
-        for (auto &v : mesh.vertices){
-            v = v + vec;
-        }
-        mesh.loadBuffers();
-
-    }
-
-
+    };
 };
-
-
 
 
 #endif // GAMEOBJECT_H

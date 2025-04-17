@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/geometric.hpp>
 #include <glm/glm.hpp>
 #include <iostream>
 #include <common/game_object.hpp>
@@ -83,7 +84,7 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target += (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0, -0.1));
+            gameObjects[focusedObject]->translate(glm::vec3(0, 0, -0.1));
             
         }
     }
@@ -92,7 +93,7 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
         if (focusedObject == -1) {
             camera_target -= (0.5f * cameraSpeed) * camera_up;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(0, 0, 0.1));
+            gameObjects[focusedObject]->translate(glm::vec3(0, 0, 0.1));
             
         }
     }
@@ -102,7 +103,7 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target -= (0.5f * cameraSpeed) * left;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(0.1, 0, 0));
+            gameObjects[focusedObject]->translate(glm::vec3(0.1, 0, 0));
             
         }
     }
@@ -112,14 +113,25 @@ void processARROWS(GLFWwindow *window,float deltaTime, float inputLastTime, glm:
             glm::vec3 left = glm::cross(camera_up, camera_target);
             camera_target += (0.5f * cameraSpeed) * left;
         } else {
-            gameObjects[focusedObject]->applytranslate(glm::vec3(-0.1, 0, 0));
+            gameObjects[focusedObject]->translate(glm::vec3(-0.1, 0, 0));
         
         }
     }
 }
 
+void processGameInputs(GLFWwindow *window, float deltaTime, float inputLastTime, glm::vec3 &camera_position,glm::vec3 &camera_target,glm::vec3 &camera_up,int &focusedObject, std::vector<GameObject*> gameObjects){
+    static bool hitPressed = false;
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !hitPressed) {
+        hitPressed = true;
+        glm::vec3 a = glm::vec3(camera_target.x, 1.0, camera_target.z);
+        gameObjects[focusedObject]->rigidBody.hit(deltaTime, glm::normalize(a), 400.0);
+    } else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE) {
+        hitPressed = false;
+    }
+}
 
-void processInput(GLFWwindow *window,float deltaTime, float inputLastTime, glm::vec3 &camera_position,glm::vec3 &camera_target,glm::vec3 &camera_up,int &focusedObject, std::vector<GameObject*> gameObjects) {
+
+void processInput(GLFWwindow *window, float deltaTime, float inputLastTime, glm::vec3 &camera_position,glm::vec3 &camera_target,glm::vec3 &camera_up,int &focusedObject, std::vector<GameObject*> gameObjects) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -129,6 +141,7 @@ void processInput(GLFWwindow *window,float deltaTime, float inputLastTime, glm::
     processWASD(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up,focusedObject,gameObjects);
     processSHIFTSPACE(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up,focusedObject,gameObjects);
     processARROWS(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up,focusedObject,gameObjects);
+    processGameInputs(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up,focusedObject,gameObjects);
 
 
     static bool tabPressed = false;
@@ -152,7 +165,6 @@ void processInput(GLFWwindow *window,float deltaTime, float inputLastTime, glm::
 
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
         std::cout <<"the camera is :" <<camera_position.x << ", " << camera_position.y << ", " << camera_position.z << std::endl;
-        
     }
 }
 

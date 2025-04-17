@@ -66,7 +66,7 @@ float lastFrame = 0.0f;
 float inputLastTime = 0.0f;
 
 // Surface settings
-float SURFACE_DISTANCE_DELTA = 0.5;
+float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
 std::vector<GameObject *> gameObjects;
@@ -74,7 +74,6 @@ int focusedObject = -1;
 /*******************************************************************************/
 
 void drawObject(Mesh mesh) {
-
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
@@ -247,15 +246,7 @@ int main(void) {
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //=========== Gestion Camera ================
-    glm::mat4 model = glm::mat4(1.0f);
-    glm::mat4 view = glm::lookAt(camera_position,
-                                 camera_target + camera_position, camera_up);
-    glm::mat4 projection =
-        glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    glm::mat4 mvp = projection * view * model;
-
+    
     //========= 1er shader ===============
     glUseProgram(programID);
 
@@ -275,22 +266,20 @@ int main(void) {
     glBindTexture(GL_TEXTURE_2D, texture3);
     glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
 
-    model = gameObjects[0]->getTransformation();
-    view = glm::lookAt(camera_position, camera_target + camera_position,
-                       camera_up);
-    projection =
-        glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    mvp = projection * view * model;
+    glm::mat4 model = gameObjects[terrain]->getTransformation();
+    glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    glm::mat4 mvp = projection * view * model;
 
     glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE,
                        &mvp[0][0]);
 
     glUniform1i(glGetUniformLocation(programID, "isFocused"),
                 0 == focusedObject ? 1 : 0);
-    Mesh terrainMesh = gameObjects[0]->mesh;
+    Mesh terrainMesh = gameObjects[terrain]->mesh;
     drawObject(terrainMesh);
 
-    printf("focusedObject :%d \n", focusedObject);
+    // printf("focusedObject :%d \n", focusedObject);
 
     //========= 2nd shader ============
     glUseProgram(programBallID);
@@ -301,25 +290,26 @@ int main(void) {
     GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
     glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-    for (int i = 1; i < gameObjects.size(); i++) {
+    for (int i = 1; i < gameObjects.size(); i++) { // i starts in 1 because this loop should not be used to render the terrain (i = 0)
 
       glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
                   i == 0 ? 1 : 0);
       glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
                   i == focusedObject ? 1 : 0);
 
+
+      float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
       Transform *transform = &gameObjects[i]->transform;
 
-      if (i != terrain) {
-        float terrainHeight =
-            gameObjects[terrain]->adjustHeight(gameObjects[i]);
-        if (terrainHeight < transform->position[1] - SURFACE_DISTANCE_DELTA) {
-          gameObjects[i]->applyGravity(deltaTime);
-        } else if (terrainHeight >
-                   transform->position[1] + SURFACE_DISTANCE_DELTA) {
-          transform->setYPosition(terrainHeight);
-        }
+      if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
+        transform->setYPosition(terrainHeight);
+        gameObjects[i]->rigidBody.stopGravity();
+      } else if (transform->position[1] > terrainHeight + SURFACE_DISTANCE_DELTA) {
+        gameObjects[i]->applyGravity(deltaTime);
+      } else {
+        gameObjects[i]->onGround(deltaTime);
       }
+      gameObjects[i]->rigidBody.physicsLoop(deltaTime);
 
       glm::mat4 model = gameObjects[i]->getTransformation();
       glm::mat4 view = glm::lookAt(camera_position,
@@ -337,8 +327,7 @@ int main(void) {
     glfwSwapBuffers(window);
     glfwPollEvents();
 
-  } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-           glfwWindowShouldClose(window) == 0);
+  } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
 
   // ========= Cleanup ============
   for (int i = 0; i < gameObjects.size(); i++) {
@@ -378,9 +367,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 void setScene() {
   GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
                                         heightmapNrChannels, heightmapData);
+  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
   gameObjects.push_back(surface);
-  surface->translate(glm::vec3(-2.0f, 0.0f, -1.0f));
-  surface->applytransform();
 
   std::string sphereMeshFilename("../models/sphere.off");
   std::string sphereMeshLowFilename("../models/suzanne.off");
@@ -388,18 +376,9 @@ void setScene() {
   Mesh sphereMesh = loadModel(sphereMeshFilename);
 
   GameObject *sphere = new GameObject(sphereMesh);
-  sphere->translate(glm::vec3(5.0f, 1.0f, 0.0f));
+  sphere->translate(glm::vec3(0.0f, 5.0f, 0.0f));
   sphere->setTexCoordForSphere();
-  sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+  sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
   sphere->mesh.loadBuffers();
-  // sphere->applytransform();
   gameObjects.push_back(sphere);
-
-  GameObject *sphere2 = new GameObject(sphereMesh);
-  sphere2->setTexCoordForSphere();
-  sphere2->translate(glm::vec3(0.3f, 5.0f, 0.0f));
-  sphere2->scale(glm::vec3(1.5f, 1.5f, 1.5f));
-  sphere2->mesh.loadBuffers();
-  // sphere2->applytransform();
-  gameObjects.push_back(sphere2);
 }
