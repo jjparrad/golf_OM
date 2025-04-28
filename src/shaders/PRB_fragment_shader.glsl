@@ -9,7 +9,9 @@ uniform vec3  albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
+// HDR
 
+uniform samplerCube irradianceMap;
 
 // lights
 uniform vec3 lightPosition;
@@ -102,7 +104,9 @@ void main()
     Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
   
   
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 ambient = irradiance * albedo * ao;
+    //vec3 ambient = vec3(0.03) * albedo * ao;
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));
