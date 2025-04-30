@@ -12,10 +12,12 @@ uniform float ao;
 // HDR
 
 uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
 
 // lights
-uniform vec3 lightPosition;
-uniform vec3 lightColor;
+uniform vec3 lightPositions[10];  // Taille maximale du tableau
+uniform vec3 lightColors[10];     // Taille maximale du tableau
+
 
 uniform vec3 camPos;
 
@@ -79,29 +81,32 @@ void main()
 
     vec3 Lo = vec3(0.0);
 
-    // calculate per-light radiance
-    vec3 L = normalize(lightPosition - WorldPos);
-    vec3 H = normalize(V + L);
-    float distance    = length(lightPosition - WorldPos);
-    float attenuation = 1.0 / (distance * distance);
-    vec3 radiance     = lightColor * attenuation;        
-    
+    for (int i = 0; i < 10; ++i) {  // 10 est la taille du tableau
+        vec3 L = normalize(lightPositions[i] - WorldPos);
+        vec3 H = normalize(V + L);
+        float distance    = length(lightPositions[i] - WorldPos);
+        float attenuation = 1.0 / (distance * distance);
+        vec3 radiance     = lightColors[i] * attenuation;        
 
-    float NDF = DistributionGGX(N, H, roughness);        
-    float G   = GeometrySmith(N, V, L, roughness);      
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
-    
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;	  
-    
-    vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3 specular     = numerator / denominator;  
-        
-    // add to outgoing radiance Lo
-    float NdotL = max(dot(N, L), 0.0);                
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
+        float NDF = DistributionGGX(N, H, roughness);        
+        float G   = GeometrySmith(N, V, L, roughness);      
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+        vec3 R = reflect(-V, N);
+        vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * 4.0).rgb;
+
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;	  
+
+        vec3 numerator    = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        vec3 specular     = numerator / denominator;  
+
+        // Ajout de l'illumination de cette lumière
+        float NdotL = max(dot(N, L), 0.0);                
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
   
   
     vec3 irradiance = texture(irradianceMap, N).rgb;

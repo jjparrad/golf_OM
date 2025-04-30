@@ -32,6 +32,7 @@ GLFWwindow* window;
 #include "common/material.hpp"
 #include "common/light.hpp"
 #include "common/util.hpp"
+#include "common/precalcul.hpp"
 
 
 Mesh loadModel(std::string filename);
@@ -85,28 +86,6 @@ void drawObject(Mesh mesh) {
 }
 /*************************************************************************** */
 
-void renderCube()
-{
-    if (cubeVAO == 0)
-    {        
-        glGenVertexArrays(1, &cubeVAO);
-        glGenBuffers(1, &cubeVBO);
-
-        glBindVertexArray(cubeVAO);
-
-        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    }
-    // Rendu du cube
-    glBindVertexArray(cubeVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-}
-
-
 
 /*******************************************************************************/
 
@@ -144,49 +123,6 @@ unsigned int loadTexture(const char* path) {
         return 0;
     }
 }
-
-unsigned int loadCubemap(std::vector<std::string> faces){
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-    int width, height, nrChannels;
-
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        stbi_set_flip_vertically_on_load(false); // Ne pas retourner les textures de la skybox
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-        if (data)
-        {
-            GLenum format = GL_RGB;
-            if (nrChannels == 1)
-                format = GL_RED;
-            else if (nrChannels == 3)
-                format = GL_RGB;
-            else if (nrChannels == 4)
-                format = GL_RGBA;
-
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            
-            stbi_image_free(data);
-        }
-        else
-        {
-            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
-        }
-    }
-
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    return textureID;
-}
-
 
 
 
@@ -261,11 +197,7 @@ int main( void )
 
     GLuint programHDR = LoadShaders( "../src/shaders/HDR_vertex_shader.glsl", "../src/shaders/HDR_fragment_shader.glsl" );
 
-    // HDR ======================================
-
-
-
-    //
+    GLuint prefilterShader = LoadShaders("../src/shaders/prefilter_vertex.glsl","../src/shaders/prefilterShader.glsl");
 
 
     std::vector<unsigned short> indices;
@@ -281,20 +213,9 @@ int main( void )
 
     GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
 
-    std::vector<std::string> facesSky{
-        "../assets/cubemap_sky/left.png",
-        "../assets/cubemap_sky/back.png",   
-        
-            
-        "../assets/cubemap_sky/up.png",      
-        "../assets/cubemap_sky/down.png",
-        
-        "../assets/cubemap_sky/right.png",   
-        "../assets/cubemap_sky/front.png",   
-         
-    };
 
-    GLuint textureSky = loadCubemap(facesSky);
+
+    GLuint textureSky = loadCubemap(facesSky, true);
 
     GLuint skyboxVAO, skyboxVBO;
 
@@ -337,59 +258,11 @@ int main( void )
     int nbFrames = 0;
 
     // HDR précalcul =======================================================================================
-    GLuint irradianceMap;
-    glGenTextures(1, &irradianceMap);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+    GLuint prefilterMap = generatePrefilterMap(prefilterShader, textureSky);
 
-    for (unsigned int i = 0; i < 6; ++i){
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
-                    32, 32, 0, GL_RGB, GL_FLOAT, nullptr); // 32x32 résolution faible
-    }
-
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    GLuint captureFBO, captureRBO;
-    glGenFramebuffers(1, &captureFBO);
-    glGenRenderbuffers(1, &captureRBO);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
-
-    glm::mat4 captureViews[] = 
-    {
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))
-    };
-    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    GLuint irradianceMap = generateIrradianceMap(programHDR, textureSky);
 
 
-    glUseProgram(programHDR); // Ton shader HDR que tu as montré
-
-    glUniform1i(glGetUniformLocation(programHDR, "skybox"), 0);
-    glUniformMatrix4fv(glGetUniformLocation(programHDR, "projection"), 1, GL_FALSE, glm::value_ptr(captureProjection));
-
-    glViewport(0, 0, 32, 32); // résolution faible pour l'irradiance
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-
-    for (unsigned int i = 0; i < 6; ++i)
-    {
-        glUniformMatrix4fv(glGetUniformLocation(programHDR, "view"), 1, GL_FALSE, glm::value_ptr(captureViews[i]));
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap, 0);
-        
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        renderCube();
-    }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -448,7 +321,7 @@ do {
 
 
     //========= 1er shader ===============
-    glUseProgram(programID);
+   /* glUseProgram(programID);
 
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_2D, textureHeightmap);
@@ -477,7 +350,7 @@ do {
 
     glUniform1i(glGetUniformLocation(programID, "isFocused"), 0 == focusedObject ? 1 : 0);
     Mesh terrainMesh = gameObjects[0]->mesh;
-    drawObject(terrainMesh);
+    drawObject(terrainMesh);*/
 
 
 
@@ -495,17 +368,25 @@ do {
     glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
     glUniform1i(glGetUniformLocation(programPRB, "irradianceMap"), 1);
 
-
-    GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPosition");
-    GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColor");
-
-    glm::vec3 l_pos = lights[0].pos;
-    glm::vec3 l_col = lights[0].color;
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+    glUniform1i(glGetUniformLocation(programPRB, "prefilterMap"), 2);
 
 
+    GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPositions");
+GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
 
-    glUniform3f(light_pos_uniform, l_pos[0], l_pos[1], l_pos[2]);
-    glUniform3f(light_col_uniform, l_col[0], l_col[1], l_col[2]);
+
+    std::vector<glm::vec3> lightPositions;
+    std::vector<glm::vec3> lightColors;
+
+    for (const auto& light : lights) {
+        lightPositions.push_back(light.pos);
+        lightColors.push_back(light.color);
+    }
+
+    glUniform3fv(light_pos_uniform, lights.size(), &lightPositions[0][0]);
+    glUniform3fv(light_col_uniform, lights.size(), &lightColors[0][0]);
 
     GLuint cam_pos_uniform = glGetUniformLocation(programPRB, "camPos");
     glUniform3f(cam_pos_uniform, camera_position[0], camera_position[1], camera_position[2]);
@@ -513,7 +394,7 @@ do {
     //printf("%f, %f, %f \n", camera_position[0], camera_position[1], camera_position[2]);
 
 
-    for (int i = 1 ; i < gameObjects.size(); i++){
+    for (int i = 0 ; i < gameObjects.size(); i++){
 
         Transform* transform = &gameObjects[i]->transform;
         glm::mat4 model = gameObjects[i]->getTransformation();
@@ -596,20 +477,26 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 
 void setScene() {
-    GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
+    /*GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
     gameObjects.push_back(surface);
     surface->translate(glm::vec3(-2.0f, 0.0f, -1.0f));
-    surface->applytransform();
+    surface->applytransform();*/
     
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
 
 
 
-    Light firstLight = Light(glm::vec3(0,2.5,1.0), glm::vec3(1.0,1.0,1.0));
+    Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
     lights.push_back(firstLight);
 
-    Material firstMat = Material( glm::vec3(1.0f,0.0,0.0), 0.2, 0.8, 1.0);
+    Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
+    lights.push_back(secondLight);
+
+    Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
+    lights.push_back(thirdLight);
+
+    /*Material firstMat = Material( glm::vec3(1.0f,0.0,0.0), 0.2, 0.8, 1.0);
     Mesh sphereMesh = loadModel(sphereMeshLowFilename);
     sphereMesh.material = firstMat;
 
@@ -634,5 +521,24 @@ void setScene() {
     //sphere2->applytransform();
     gameObjects.push_back(sphere2);
 
-    //setupSkybox();
+   */
+
+    for(int i = 1 ; i < 10; i++){
+        for(int j = 1; j < 10 ; j++){
+            Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
+            Mesh sphereMesh = loadModel(sphereMeshFilename);
+            sphereMesh.material = Mat;
+
+            GameObject* sphere = new GameObject(sphereMesh);
+
+            sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , 0.0f));
+            sphere->setTexCoordForSphere();
+            sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+            sphere->mesh.loadBuffers();
+            gameObjects.push_back(sphere);
+
+        }
+    } 
+
+
 }
