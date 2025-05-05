@@ -17,18 +17,23 @@ GLFWwindow *window;
 
 // Include GLM
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <common/shader.hpp>
+#include <common/objloader.hpp>
+#include <common/vboindexer.hpp>
+#include <common/game_object.hpp>
 #include "common/input.hpp"
 #include "common/surface.hpp"
-#include <common/game_object.hpp>
-#include <common/objloader.hpp>
-#include <common/shader.hpp>
-#include <common/vboindexer.hpp>
+#include "common/material.hpp"
+#include "common/light.hpp"
+#include "common/util.hpp"
+#include "common/precalcul.hpp"
 
 Mesh loadModel(std::string filename);
 void setScene();
@@ -70,32 +75,19 @@ float inputLastTime = 0.0f;
 float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
-std::vector<GameObject *> gameObjects;
+std::vector<GameObject*> gameObjects;
+std::vector<Light> lights;
 int focusedObject = -1;
+
 /*******************************************************************************/
 
 void drawObject(Mesh mesh) {
-  glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexbuffer);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
-
-  if (mesh.hasTexture()) {
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.texturebuffer);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
-  }
-
-  // Index buffer
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.elementbuffer);
-
-  // Draw the triangles !
-  glDrawElements(GL_TRIANGLES,          // mode
+    glBindVertexArray(mesh.vaoID);
+    glDrawElements(GL_TRIANGLES,          // mode
                  mesh.getIndicesSize(), // count
                  GL_UNSIGNED_SHORT,     // type
-                 (void *)0              // element array buffer offset
-  );
-
-  glDisableVertexAttribArray(0);
+                 0);              // element array buffer offset
+    glBindVertexArray(0);
 }
 
 /*******************************************************************************/
@@ -136,13 +128,17 @@ unsigned int loadTexture(const char *path) {
   }
 }
 
-int main(void) {
-  // Initialise GLFW
-  if (!glfwInit()) {
-    fprintf(stderr, "Failed to initialize GLFW\n");
-    getchar();
-    return -1;
-  }
+/*******************************************************************************/ 
+
+int main( void )
+{
+    // Initialise GLFW
+    if( !glfwInit() )
+    {
+        fprintf( stderr, "Failed to initialize GLFW\n" );
+        getchar();
+        return -1;
+    }
 
   glfwWindowHint(GLFW_SAMPLES, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -182,31 +178,34 @@ int main(void) {
   glfwSetCursorPos(window, SCR_WIDTH / 2, SCR_HEIGHT / 2);
 
   // Dark blue background
-  glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.2f, 0.0f);
 
   // Enable depth test
   glEnable(GL_DEPTH_TEST);
-  // Accept fragment if it closer to the camera than the former one
-  glDepthFunc(GL_LESS);
-
-  // Cull triangles which normal is not towards the camera
-  // glEnable(GL_CULL_FACE);
+  
 
   GLuint VertexArrayID;
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
 
   // Create and compile our GLSL program from the shaders
-  GLuint programID = LoadShaders("../src/shaders/vertex_shader.glsl",
-                                 "../src/shaders/fragment_shader.glsl");
+  GLuint programID = LoadShaders( "../src/shaders/vertex_shader.glsl", "../src/shaders/fragment_shader.glsl" );
 
-  GLuint programBallID =
-      LoadShaders("../src/shaders/ball_vertex_shader.glsl",
-                  "../src/shaders/ball_fragment_shader.glsl");
+  GLuint programBallID = LoadShaders("../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl");
+
+  GLuint programPRB = LoadShaders("../src/shaders/PRB_vertex_shader.glsl", "../src/shaders/PRB_fragment_shader.glsl");
+
+  GLuint programSky = LoadShaders( "../src/shaders/sky_vertex_shader.glsl", "../src/shaders/sky_fragment_shader.glsl" );
+
+  GLuint programHDR = LoadShaders( "../src/shaders/HDR_vertex_shader.glsl", "../src/shaders/HDR_fragment_shader.glsl" );
+
+  GLuint prefilterShader = LoadShaders("../src/shaders/prefilter_vertex.glsl","../src/shaders/prefilterShader.glsl");
+
 
   std::vector<unsigned short> indices;
   std::vector<glm::vec3> indexed_vertices;
   std::vector<glm::vec2> textureCoords;
+
 
   // Generate texture
   glEnable(GL_TEXTURE_2D);
@@ -230,12 +229,50 @@ int main(void) {
   // For speed computation
   lastFrame = glfwGetTime();
 
+  GLuint textureSky = loadCubemap(facesSky, true);
+
+  GLuint skyboxVAO, skyboxVBO;
+
+
+  GLint prevVAO;
+  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
+
+  // init skybox VAO
+  glGenVertexArrays(1, &skyboxVAO);
+  glGenBuffers(1, &skyboxVBO);
+  glBindVertexArray(skyboxVAO);
+  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+  glBindVertexArray(prevVAO);
+
+  // For speed computation
+  lastFrame = glfwGetTime();
+
+
+  
   float currentTime = glfwGetTime();
   float inputDeltaTime = currentTime - inputLastTime;
   inputLastTime = currentTime;
 
   int nbFrames = 0;
-  do {
+
+  // HDR précalcul =======================================================================================
+  GLuint prefilterMap = generatePrefilterMap(prefilterShader, textureSky);
+
+  GLuint irradianceMap = generateIrradianceMap(programHDR, textureSky);
+
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+
+// ========================================================
+
+
+
+do {
     // Measure speed
     float currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
@@ -247,9 +284,40 @@ int main(void) {
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+
+    //=========== Gestion Camera ================
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    glm::mat4 mvp = projection * view * model;
+
+
+    // ========== Rendu skybox ==========
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+    glUseProgram(programSky);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureSky);
+
+    glm::mat4 viewSky = glm::mat4(glm::mat3(view)); // enlever la translation
+
+    glUniformMatrix4fv(glGetUniformLocation(programSky, "view"), 1, GL_FALSE, &viewSky[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(programSky, "projection"), 1, GL_FALSE, &projection[0][0]);
+
+    glBindVertexArray(skyboxVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+
     //========= 1er shader ===============
-    glUseProgram(programID);
+   /* glUseProgram(programID);
 
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_2D, textureHeightmap);
@@ -275,60 +343,119 @@ int main(void) {
     glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE,
                        &mvp[0][0]);
 
-    glUniform1i(glGetUniformLocation(programID, "isFocused"),
-                0 == focusedObject ? 1 : 0);
-    Mesh terrainMesh = gameObjects[terrain]->mesh;
+    glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE, &mvp[0][0]);
+
+
+    glUniform1i(glGetUniformLocation(programID, "isFocused"), 0 == focusedObject ? 1 : 0);
+    Mesh terrainMesh = gameObjects[0]->mesh;
     drawObject(terrainMesh);
 
-    // printf("focusedObject :%d \n", focusedObject);
+    */
 
-    //========= 2nd shader ============
-    glUseProgram(programBallID);
+
+    // PRB =====================================================================
+    glUseProgram(programPRB);
+
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_2D, texture_earth);
-    glUniform1i(glGetUniformLocation(programBallID, "texture_earth"), 0);
+    glUniform1i(glGetUniformLocation(programPRB, "texture_earth"), 0);
 
-    GLuint mvp_uniform = glGetUniformLocation(programBallID, "MVP");
+    GLuint mvp_uniform = glGetUniformLocation(programPRB, "MVP");
     glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-    for (int i = 1; i < gameObjects.size(); i++) { // i starts in 1 because this loop should not be used to render the terrain (i = 0)
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+    glUniform1i(glGetUniformLocation(programPRB, "irradianceMap"), 1);
 
-      glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
-                  i == 0 ? 1 : 0);
-      glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
-                  i == focusedObject ? 1 : 0);
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+    glUniform1i(glGetUniformLocation(programPRB, "prefilterMap"), 2);
 
 
-      float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-      Transform *transform = &gameObjects[i]->transform;
+    GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPositions");
+    GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
 
-      if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
-        transform->setYPosition(terrainHeight);
-        gameObjects[i]->rigidBody.stopGravity();
-      } else if (transform->position[1] > terrainHeight + SURFACE_DISTANCE_DELTA) {
-        gameObjects[i]->applyGravity(deltaTime);
-      } else {
-        gameObjects[i]->onGround(deltaTime);
-      }
 
-      bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
-      if (!objectInTerrain) {
-        gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
-        gameObjects[i]->rigidBody.resetVelocity();
-      }
-      gameObjects[i]->rigidBody.physicsLoop(deltaTime);
+    std::vector<glm::vec3> lightPositions;
+    std::vector<glm::vec3> lightColors;
 
-      glm::mat4 model = gameObjects[i]->getTransformation();
-      glm::mat4 view = glm::lookAt(camera_position,
-                                   camera_target + camera_position, camera_up);
-      glm::mat4 projection =
-          glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-      glm::mat4 mvp = projection * view * model;
-      glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
-
-      Mesh sp = gameObjects[i]->mesh;
-      drawObject(sp);
+    for (const auto& light : lights) {
+        lightPositions.push_back(light.pos);
+        lightColors.push_back(light.color);
     }
+
+    glUniform3fv(light_pos_uniform, lights.size(), &lightPositions[0][0]);
+    glUniform3fv(light_col_uniform, lights.size(), &lightColors[0][0]);
+
+    GLuint cam_pos_uniform = glGetUniformLocation(programPRB, "camPos");
+    glUniform3f(cam_pos_uniform, camera_position[0], camera_position[1], camera_position[2]);
+
+    //printf("%f, %f, %f \n", camera_position[0], camera_position[1], camera_position[2]);
+
+
+    for (int i = 0 ; i < gameObjects.size(); i++){
+        // glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
+        //             i == 0 ? 1 : 0);
+        // glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
+        //             i == focusedObject ? 1 : 0);
+
+
+        float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
+        Transform* transform = &gameObjects[i]->transform;
+
+        if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
+          transform->setYPosition(terrainHeight);
+          gameObjects[i]->rigidBody.stopGravity();
+        } else if (transform->position[1] > terrainHeight + SURFACE_DISTANCE_DELTA) {
+          gameObjects[i]->applyGravity(deltaTime);
+        } else {
+          gameObjects[i]->onGround(deltaTime);
+        }
+
+        bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
+        if (!objectInTerrain) {
+          gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
+          gameObjects[i]->rigidBody.resetVelocity();
+        }
+        gameObjects[i]->rigidBody.physicsLoop(deltaTime);
+
+
+
+
+        glm::mat4 model = gameObjects[i]->getTransformation();
+        glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+        glm::mat4 mvp = projection * view * model;
+        glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
+
+        GLuint modelLoc = glGetUniformLocation(programPRB, "model");
+        GLuint viewLoc = glGetUniformLocation(programPRB, "view");
+        GLuint projLoc = glGetUniformLocation(programPRB, "projection");
+
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, &projection[0][0]);
+
+        Material currentMat = gameObjects[i]->mesh.material;
+
+
+        GLuint metal_f_uniform = glGetUniformLocation(programPRB, "metallic");
+        glUniform1f(metal_f_uniform, currentMat.metal_f);
+
+        GLuint rough_f_uniform = glGetUniformLocation(programPRB, "roughness");
+        glUniform1f(rough_f_uniform, currentMat.rough_f);
+
+        GLuint ao_uniform = glGetUniformLocation(programPRB, "ao");
+        glUniform1f(ao_uniform, currentMat.ao);
+        
+        GLuint albedo_uniform = glGetUniformLocation(programPRB, "albedo");
+        glUniform3f(albedo_uniform, currentMat.albedo[0], currentMat.albedo[1], currentMat.albedo[2]);
+
+
+        Mesh sp = gameObjects[i]->mesh;
+        drawObject(sp);
+    }
+
 
     // Swap buffers
     glfwSwapBuffers(window);
@@ -371,7 +498,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
-void setScene() {
+void setScene2() {
   GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
                                         heightmapNrChannels, heightmapData);
   surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
@@ -381,11 +508,48 @@ void setScene() {
   std::string sphereMeshLowFilename("../models/suzanne.off");
 
   Mesh sphereMesh = loadModel(sphereMeshFilename);
-
   GameObject *sphere = new GameObject(sphereMesh);
   sphere->translate(glm::vec3(-4.5f, 1.0f, 4.5f));
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
+}
+
+void setScene() {
+    std::string sphereMeshFilename("../models/sphere.off");
+    std::string sphereMeshLowFilename("../models/suzanne.off");
+
+
+    GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
+                                          heightmapNrChannels, heightmapData);
+  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
+  gameObjects.push_back(surface);
+
+
+    Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
+    lights.push_back(firstLight);
+
+    Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
+    lights.push_back(secondLight);
+
+    Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
+
+    lights.push_back(thirdLight);
+    for(int i = 1 ; i < 4; i++){
+      for(int j = 1; j < 4 ; j++){
+          Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
+          Mesh sphereMesh = loadModel(sphereMeshFilename);
+          sphereMesh.material = Mat;
+
+          GameObject* sphere = new GameObject(sphereMesh);
+
+          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , 0.0f));
+          sphere->setTexCoordForSphere();
+          sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+          sphere->mesh.loadBuffers();
+          gameObjects.push_back(sphere);
+
+      }
+  } 
 }
