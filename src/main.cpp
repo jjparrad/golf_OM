@@ -1,18 +1,19 @@
 // Include standard headers
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <vector>
-#include <iostream>
+
 
 // Include GLEW
 #include <GL/glew.h>
 
 // Include GLFW
 #include <GLFW/glfw3.h>
-GLFWwindow* window;
+GLFWwindow *window;
 
 // Include GLM
 #include <glm/glm.hpp>
@@ -23,10 +24,6 @@ GLFWwindow* window;
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <common/shader.hpp>
-#include <common/objloader.hpp>
-#include <common/vboindexer.hpp>
-#include <common/game_object.hpp>
 #include "common/input.hpp"
 #include "common/surface.hpp"
 #include "common/material.hpp"
@@ -34,97 +31,98 @@ GLFWwindow* window;
 #include "common/util.hpp"
 #include "common/precalcul.hpp"
 
-
 Mesh loadModel(std::string filename);
 void setScene();
-void loadGameObject(GameObject object, GLuint vertexbuffer, GLuint texturebuffer, GLuint elementbuffer);
+void loadGameObject(GameObject object, GLuint vertexbuffer,
+                    GLuint texturebuffer, GLuint elementbuffer);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char* TEXTURE_LOW_PATH = "../assets/textures/grass.png";
-const char* TEXTURE_MID_PATH = "../assets/textures/rock.png";
-const char* TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
+const char *TEXTURE_LOW_PATH = "../assets/textures/grass.png";
+const char *TEXTURE_MID_PATH = "../assets/textures/rock.png";
+const char *TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
 
 // const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_rocky.png";
 // const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_mountain.png";
 // const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_1024x1024.png";
-const char* HEIGHTMAP_PATH = "../assets/textures/heightmap_1.jpg";
+const char *HEIGHTMAP_PATH = "../assets/textures/heightmap_1.jpg";
 
-const char* TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
-
+const char *TEXTURE_EARTH_PATH = "../assets/textures/chess.jpg";
+// const char *TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
 
 unsigned char *heightmapData;
 int heightmapWidth, heightmapHeight, heightmapNrChannels;
 
 // camera
-glm::vec3 camera_position   = glm::vec3(0.0f, 5.0f, 5.0f);
+glm::vec3 camera_position = glm::vec3(0.0f, 5.0f, 5.0f);
 glm::vec3 camera_target = glm::normalize(glm::vec3(0.0f, -1.0f, -1.0f));
-glm::vec3 camera_up    = glm::vec3(0.0f, 1.0f,  0.0f);
+glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
 
 float DISTANCE_LOW_RESOLUTION = 10.0;
 
 // timing
-float deltaTime = 0.0f;	// time between current frame and last frame
+float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 float inputLastTime = 0.0f;
 
 // Surface settings
-float SURFACE_DISTANCE_DELTA = 0.5;
+float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
 std::vector<Light> lights;
 int focusedObject = -1;
+
 /*******************************************************************************/
 
 void drawObject(Mesh mesh) {
     glBindVertexArray(mesh.vaoID);
-    glDrawElements(GL_TRIANGLES, mesh.getIndicesSize(), GL_UNSIGNED_SHORT, 0);
+    glDrawElements(GL_TRIANGLES,          // mode
+                 mesh.getIndicesSize(), // count
+                 GL_UNSIGNED_SHORT,     // type
+                 (void *)0              // element array buffer offset
     glBindVertexArray(0);
 }
-/*************************************************************************** */
-
 
 /*******************************************************************************/
 
-unsigned int loadTexture(const char* path) {
-    int width, height, nrChannels;
-    unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data) {
-        GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
+unsigned int loadTexture(const char *path) {
+  int width, height, nrChannels;
+  unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
+  if (data) {
+    GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
 
-        unsigned int textureID;
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // X
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Y
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // X
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Y
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format,
+                 GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
 
-        if (path == HEIGHTMAP_PATH) {
-            heightmapData = data;
-            heightmapWidth = width;
-            heightmapHeight = height;
-            heightmapNrChannels = nrChannels;
-        } else {
-            stbi_image_free(data);
-        }
-
-        return textureID;
+    if (path == HEIGHTMAP_PATH) {
+      heightmapData = data;
+      heightmapWidth = width;
+      heightmapHeight = height;
+      heightmapNrChannels = nrChannels;
     } else {
-        std::cout << "Failed to load texture" << std::endl;
-        return 0;
+      stbi_image_free(data);
     }
+
+    return textureID;
+  } else {
+    std::cout << "Failed to load texture" << std::endl;
+    return 0;
+  }
 }
-
-
 
 /*******************************************************************************/ 
 
@@ -138,139 +136,148 @@ int main( void )
         return -1;
     }
 
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_SAMPLES, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,
+                 GL_TRUE); // To make MacOS happy; should not be needed
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Open a window and create its OpenGL context
-    window = glfwCreateWindow( SCR_WIDTH, SCR_HEIGHT, "GLFW", NULL, NULL);
-    if(window == NULL) {
-        fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
-        getchar();
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
+  // Open a window and create its OpenGL context
+  window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GLFW", NULL, NULL);
+  if (window == NULL) {
+    fprintf(stderr,
+            "Failed to open GLFW window. If you have an Intel GPU, they are "
+            "not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
+    getchar();
+    glfwTerminate();
+    return -1;
+  }
+  glfwMakeContextCurrent(window);
 
-    // Initialize GLEW
-    glewExperimental = true; // Needed for core profile
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "Failed to initialize GLEW\n");
-        getchar();
-        glfwTerminate();
-        return -1;
-    }
+  // Initialize GLEW
+  glewExperimental = true; // Needed for core profile
+  if (glewInit() != GLEW_OK) {
+    fprintf(stderr, "Failed to initialize GLEW\n");
+    getchar();
+    glfwTerminate();
+    return -1;
+  }
 
-    // Ensure we can capture the escape key being pressed below
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-    // Hide the mouse and enable unlimited mouvement
-    //  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  // Ensure we can capture the escape key being pressed below
+  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  // Hide the mouse and enable unlimited mouvement
+  //  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // Set the mouse at the center of the screen
-    glfwPollEvents();
-    glfwSetCursorPos(window, SCR_WIDTH/2, SCR_HEIGHT/2);
+  // Set the mouse at the center of the screen
+  glfwPollEvents();
+  glfwSetCursorPos(window, SCR_WIDTH / 2, SCR_HEIGHT / 2);
 
-    // Dark blue background
-    glClearColor(0.0f, 0.0f, 0.2f, 0.0f);
+  // Dark blue background
+  glClearColor(0.0f, 0.0f, 0.2f, 0.0f);
 
-    // Enable depth test
-    glEnable(GL_DEPTH_TEST);
-    // Cull triangles which normal is not towards the camera
-    //glEnable(GL_CULL_FACE);
+  // Enable depth test
+  glEnable(GL_DEPTH_TEST);
+  
 
-    GLuint VertexArrayID;
-    glGenVertexArrays(1, &VertexArrayID);
-    glBindVertexArray(VertexArrayID);
+  GLuint VertexArrayID;
+  glGenVertexArrays(1, &VertexArrayID);
+  glBindVertexArray(VertexArrayID);
 
-    // Create and compile our GLSL program from the shaders
-    
+  // Create and compile our GLSL program from the shaders
+  GLuint programID = LoadShaders( "../src/shaders/vertex_shader.glsl", "../src/shaders/fragment_shader.glsl" );
 
-    GLuint programID = LoadShaders( "../src/shaders/vertex_shader.glsl", "../src/shaders/fragment_shader.glsl" );
+  GLuint programBallID = LoadShaders("../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl");
 
-    GLuint programBallID = LoadShaders( "../src/shaders/ball_vertex_shader.glsl", "../src/shaders/ball_fragment_shader.glsl" );
+  GLuint programPRB = LoadShaders("../src/shaders/PRB_vertex_shader.glsl", "../src/shaders/PRB_fragment_shader.glsl");
 
-    GLuint programPRB = LoadShaders("../src/shaders/PRB_vertex_shader.glsl", "../src/shaders/PRB_fragment_shader.glsl");
+  GLuint programSky = LoadShaders( "../src/shaders/sky_vertex_shader.glsl", "../src/shaders/sky_fragment_shader.glsl" );
 
-    GLuint programSky = LoadShaders( "../src/shaders/sky_vertex_shader.glsl", "../src/shaders/sky_fragment_shader.glsl" );
+  GLuint programHDR = LoadShaders( "../src/shaders/HDR_vertex_shader.glsl", "../src/shaders/HDR_fragment_shader.glsl" );
 
-    GLuint programHDR = LoadShaders( "../src/shaders/HDR_vertex_shader.glsl", "../src/shaders/HDR_fragment_shader.glsl" );
-
-    GLuint prefilterShader = LoadShaders("../src/shaders/prefilter_vertex.glsl","../src/shaders/prefilterShader.glsl");
-
-
-    std::vector<unsigned short> indices;
-    std::vector<glm::vec3> indexed_vertices;
-    std::vector<glm::vec2> textureCoords;
-
-    // Generate texture
-    glEnable(GL_TEXTURE_2D);
-    GLuint textureHeightmap = loadTexture(HEIGHTMAP_PATH);
-    GLuint texture1 = loadTexture(TEXTURE_LOW_PATH);
-    GLuint texture2 = loadTexture(TEXTURE_MID_PATH);
-    GLuint texture3 = loadTexture(TEXTURE_HIGH_PATH);
-
-    GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
+  GLuint prefilterShader = LoadShaders("../src/shaders/prefilter_vertex.glsl","../src/shaders/prefilterShader.glsl");
 
 
-
-    GLuint textureSky = loadCubemap(facesSky, true);
-
-    GLuint skyboxVAO, skyboxVBO;
-
-
-    GLint prevVAO;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
-
-    // init skybox VAO
-    glGenVertexArrays(1, &skyboxVAO);
-    glGenBuffers(1, &skyboxVBO);
-    glBindVertexArray(skyboxVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glBindVertexArray(prevVAO);
+  std::vector<unsigned short> indices;
+  std::vector<glm::vec3> indexed_vertices;
+  std::vector<glm::vec2> textureCoords;
 
 
+  // Generate texture
+  glEnable(GL_TEXTURE_2D);
+  GLuint textureHeightmap = loadTexture(HEIGHTMAP_PATH);
+  GLuint texture1 = loadTexture(TEXTURE_LOW_PATH);
+  GLuint texture2 = loadTexture(TEXTURE_MID_PATH);
+  GLuint texture3 = loadTexture(TEXTURE_HIGH_PATH);
+
+  GLuint texture_earth = loadTexture(TEXTURE_EARTH_PATH);
+
+  GLuint vertexbuffer;
+  glGenBuffers(1, &vertexbuffer);
+  GLuint texturebuffer;
+  glGenBuffers(1, &texturebuffer);
+  GLuint elementbuffer;
+  glGenBuffers(1, &elementbuffer);
+
+  setScene();
+  int terrain = 0;
+
+  // For speed computation
+  lastFrame = glfwGetTime();
+
+  GLuint textureSky = loadCubemap(facesSky, true);
+
+  GLuint skyboxVAO, skyboxVBO;
 
 
-    GLuint vertexbuffer;
-    glGenBuffers(1, &vertexbuffer);
-    GLuint texturebuffer;
-    glGenBuffers(1, &texturebuffer);
-    GLuint elementbuffer;
-    glGenBuffers(1, &elementbuffer);
+  GLint prevVAO;
+  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
-    setScene();
-    int terrain = 0;
-
-    // For speed computation
-    lastFrame = glfwGetTime();
-
-
-    
-    float currentTime = glfwGetTime();
-    float inputDeltaTime = currentTime - inputLastTime;
-    inputLastTime = currentTime;
-
-    int nbFrames = 0;
-
-    // HDR précalcul =======================================================================================
-    GLuint prefilterMap = generatePrefilterMap(prefilterShader, textureSky);
-
-    GLuint irradianceMap = generateIrradianceMap(programHDR, textureSky);
+  // init skybox VAO
+  glGenVertexArrays(1, &skyboxVAO);
+  glGenBuffers(1, &skyboxVBO);
+  glBindVertexArray(skyboxVAO);
+  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+  glBindVertexArray(prevVAO);
 
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+
+  GLuint vertexbuffer;
+  glGenBuffers(1, &vertexbuffer);
+  GLuint texturebuffer;
+  glGenBuffers(1, &texturebuffer);
+  GLuint elementbuffer;
+  glGenBuffers(1, &elementbuffer);
+
+  setScene();
+  int terrain = 0;
+
+  // For speed computation
+  lastFrame = glfwGetTime();
+
+
+  
+  float currentTime = glfwGetTime();
+  float inputDeltaTime = currentTime - inputLastTime;
+  inputLastTime = currentTime;
+
+  int nbFrames = 0;
+
+  // HDR précalcul =======================================================================================
+  GLuint prefilterMap = generatePrefilterMap(prefilterShader, textureSky);
+
+  GLuint irradianceMap = generateIrradianceMap(programHDR, textureSky);
+
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 
 // ========================================================
-
-
-
 
 
 
@@ -281,7 +288,8 @@ do {
     lastFrame = currentFrame;
 
     // input
-    processInput(window, deltaTime, inputLastTime, camera_position, camera_target, camera_up, focusedObject, gameObjects);
+    processInput(window, deltaTime, currentFrame, camera_position,
+                 camera_target, camera_up, focusedObject, gameObjects);
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -317,9 +325,6 @@ do {
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LESS);
 
-
-
-
     //========= 1er shader ===============
    /* glUseProgram(programID);
 
@@ -339,19 +344,22 @@ do {
     glBindTexture(GL_TEXTURE_2D, texture3);
     glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
 
+    glm::mat4 model = gameObjects[terrain]->getTransformation();
+    glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    glm::mat4 mvp = projection * view * model;
 
-    model = gameObjects[0]->getTransformation();
-    view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
-    projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    mvp = projection * view * model;
+    glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE,
+                       &mvp[0][0]);
 
     glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE, &mvp[0][0]);
 
 
     glUniform1i(glGetUniformLocation(programID, "isFocused"), 0 == focusedObject ? 1 : 0);
     Mesh terrainMesh = gameObjects[0]->mesh;
-    drawObject(terrainMesh);*/
+    drawObject(terrainMesh);
 
+    */
 
 
     // PRB =====================================================================
@@ -374,7 +382,7 @@ do {
 
 
     GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPositions");
-GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
+    GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
 
 
     std::vector<glm::vec3> lightPositions;
@@ -395,8 +403,34 @@ GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
 
 
     for (int i = 0 ; i < gameObjects.size(); i++){
+        // glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
+        //             i == 0 ? 1 : 0);
+        // glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
+        //             i == focusedObject ? 1 : 0);
 
+
+        float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
         Transform* transform = &gameObjects[i]->transform;
+
+        if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
+          transform->setYPosition(terrainHeight);
+          gameObjects[i]->rigidBody.stopGravity();
+        } else if (transform->position[1] > terrainHeight + SURFACE_DISTANCE_DELTA) {
+          gameObjects[i]->applyGravity(deltaTime);
+        } else {
+          gameObjects[i]->onGround(deltaTime);
+        }
+
+        bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
+        if (!objectInTerrain) {
+          gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
+          gameObjects[i]->rigidBody.resetVelocity();
+        }
+        gameObjects[i]->rigidBody.physicsLoop(deltaTime);
+
+
+
+
         glm::mat4 model = gameObjects[i]->getTransformation();
         glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
@@ -429,7 +463,6 @@ GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
 
         Mesh sp = gameObjects[i]->mesh;
         drawObject(sp);
-
     }
 
 
@@ -437,51 +470,62 @@ GLuint light_col_uniform = glGetUniformLocation(programPRB, "lightColors");
     glfwSwapBuffers(window);
     glfwPollEvents();
 
-} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-         glfwWindowShouldClose(window) == 0);
+  } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
 
-// ========= Cleanup ============
-for (int i = 0; i < gameObjects.size(); i++) {
+  // ========= Cleanup ============
+  for (int i = 0; i < gameObjects.size(); i++) {
     Mesh mesh = gameObjects[i]->mesh;
     glDeleteBuffers(1, &mesh.vertexbuffer);
     glDeleteBuffers(1, &mesh.texturebuffer);
     glDeleteBuffers(1, &mesh.elementbuffer);
-}
+  }
 
-glDeleteProgram(programID);
-glDeleteVertexArrays(1, &VertexArrayID);
-glfwTerminate();
-return 0;
+  glDeleteProgram(programID);
+  glDeleteVertexArrays(1, &VertexArrayID);
+  glfwTerminate();
+  return 0;
 }
 
 Mesh loadModel(std::string filename) {
-    std::vector<unsigned short> indices;
-    std::vector<glm::vec3> indexed_vertices;
-    std::vector<glm::vec2> textureCoords;
-    std::vector<std::vector<unsigned short>> triangles;
-    
-    loadOFF(filename, indexed_vertices, indices, triangles);
-    
-    Mesh modelMesh(indices, indexed_vertices, textureCoords);
-    return modelMesh;
+  std::vector<unsigned short> indices;
+  std::vector<glm::vec3> indexed_vertices;
+  std::vector<glm::vec2> textureCoords;
+  std::vector<std::vector<unsigned short>> triangles;
+
+  loadOFF(filename, indexed_vertices, indices, triangles);
+
+  Mesh modelMesh(indices, indexed_vertices, textureCoords);
+  return modelMesh;
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// glfw: whenever the window size changed (by OS or user resize) this callback
+// function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  // make sure the viewport matches the new window dimensions; note that width
+  // and height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
 }
-
 
 void setScene() {
-    /*GameObject* surface = generateSurface(heightmapHeight, heightmapWidth, heightmapNrChannels,heightmapData);
-    gameObjects.push_back(surface);
-    surface->translate(glm::vec3(-2.0f, 0.0f, -1.0f));
-    surface->applytransform();*/
-    
+  GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
+                                        heightmapNrChannels, heightmapData);
+  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
+  gameObjects.push_back(surface);
+
+  std::string sphereMeshFilename("../models/sphere.off");
+  std::string sphereMeshLowFilename("../models/suzanne.off");
+
+  Mesh sphereMesh = loadModel(sphereMeshFilename);
+  GameObject *sphere = new GameObject(sphereMesh);
+  sphere->translate(glm::vec3(-4.5f, 1.0f, 4.5f));
+  sphere->setTexCoordForSphere();
+  sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
+  sphere->mesh.loadBuffers();
+  gameObjects.push_back(sphere);
+}
+
+void setScene2() {
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
 
@@ -494,36 +538,9 @@ void setScene() {
     lights.push_back(secondLight);
 
     Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
+    
     lights.push_back(thirdLight);
-
-    /*Material firstMat = Material( glm::vec3(1.0f,0.0,0.0), 0.2, 0.8, 1.0);
-    Mesh sphereMesh = loadModel(sphereMeshLowFilename);
-    sphereMesh.material = firstMat;
-
-
-    Material secondMat = Material( glm::vec3(1.0f,0.0f,1.0f), 0.9, 0.2, 1.0);
-    Mesh sphereMesh2 = loadModel(sphereMeshLowFilename);
-    sphereMesh2.material = secondMat;
-
-    GameObject* sphere = new GameObject(sphereMesh);
-    sphere->translate(glm::vec3(5.0f, 1.0f, 0.0f));
-    sphere->setTexCoordForSphere();
-    sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
-    sphere->mesh.loadBuffers();
-    //sphere->applytransform();
-    gameObjects.push_back(sphere);
-
-    GameObject* sphere2 = new GameObject(sphereMesh2);
-    sphere2->setTexCoordForSphere();
-    sphere2->translate(glm::vec3(0.3f, 2.0f, 0.0f));
-    sphere2->scale(glm::vec3(1.0f, 1.0f, 1.0f));
-    sphere2->mesh.loadBuffers();
-    //sphere2->applytransform();
-    gameObjects.push_back(sphere2);
-
-   */
-
-    for(int i = 1 ; i < 10; i++){
+        for(int i = 1 ; i < 10; i++){
         for(int j = 1; j < 10 ; j++){
             Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
             Mesh sphereMesh = loadModel(sphereMeshFilename);
@@ -539,6 +556,4 @@ void setScene() {
 
         }
     } 
-
-
 }

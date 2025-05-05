@@ -24,7 +24,7 @@ public:
     Mesh low_mesh;
 
     bool hasLowMesh = false;
-    bool useGravity = true;
+    bool usePhysics = true;
     
     std::vector<GameObject*> children;
     GameObject* parent = nullptr;
@@ -75,7 +75,7 @@ public:
         std::cout << "GameObject alive" << std::endl;
     };
 
-    float adjustHeight(GameObject* object) {
+    bool isInBounds(GameObject* object) {
         glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
 
         float xMin = mesh.minVertex.x;
@@ -85,9 +85,15 @@ public:
 
         if (localPosition.x < xMin || localPosition.x > xMax ||
             localPosition.z < zMin || localPosition.z > zMax) {
-            return object->transform.position.y;
+            return false;
         }
 
+        return true;
+    };
+
+    float adjustHeight(GameObject* object) {
+        glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
+        
         float localHeight = mesh.getHeightInPosition(localPosition);
         float globalHeight = localHeight + transform.position.y;
 
@@ -95,37 +101,21 @@ public:
     };
 
     void applyGravity(float time) {
-        if (useGravity) {
+        if (usePhysics) {
             rigidBody.applyGravity(time);
         }
     };
 
+    void onGround(float time) {
+        if (usePhysics) {
+            rigidBody.slowDown(time);
+        }
+    };
     
     void setTexCoordForSphere(){
         mesh.setTexCoordForSphere();
-    }
-
-
-    void applytransform(){
-        for (auto &v : mesh.vertices){
-            v = transform.applyToPoint(v);
-        }
-        mesh.loadBuffers();
-    }
-
-    void applytranslate(const glm::vec3 &vec){
-        transform.translate(vec);
-        for (auto &v : mesh.vertices){
-            v = v + vec;
-        }
-        mesh.loadBuffers();
-
-    }
-
-
+    };
 };
-
-
 
 
 #endif // GAMEOBJECT_H
