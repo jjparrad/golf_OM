@@ -24,6 +24,10 @@ GLFWwindow *window;
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <common/shader.hpp>
+#include <common/objloader.hpp>
+#include <common/vboindexer.hpp>
+#include <common/game_object.hpp>
 #include "common/input.hpp"
 #include "common/surface.hpp"
 #include "common/material.hpp"
@@ -82,7 +86,7 @@ void drawObject(Mesh mesh) {
     glDrawElements(GL_TRIANGLES,          // mode
                  mesh.getIndicesSize(), // count
                  GL_UNSIGNED_SHORT,     // type
-                 (void *)0              // element array buffer offset
+                 0);              // element array buffer offset
     glBindVertexArray(0);
 }
 
@@ -242,19 +246,6 @@ int main( void )
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
   glBindVertexArray(prevVAO);
-
-
-
-
-  GLuint vertexbuffer;
-  glGenBuffers(1, &vertexbuffer);
-  GLuint texturebuffer;
-  glGenBuffers(1, &texturebuffer);
-  GLuint elementbuffer;
-  glGenBuffers(1, &elementbuffer);
-
-  setScene();
-  int terrain = 0;
 
   // For speed computation
   lastFrame = glfwGetTime();
@@ -507,7 +498,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
-void setScene() {
+void setScene2() {
   GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
                                         heightmapNrChannels, heightmapData);
   surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
@@ -525,10 +516,15 @@ void setScene() {
   gameObjects.push_back(sphere);
 }
 
-void setScene2() {
+void setScene() {
     std::string sphereMeshFilename("../models/sphere.off");
     std::string sphereMeshLowFilename("../models/suzanne.off");
 
+
+    GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
+                                          heightmapNrChannels, heightmapData);
+  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
+  gameObjects.push_back(surface);
 
 
     Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
@@ -538,22 +534,22 @@ void setScene2() {
     lights.push_back(secondLight);
 
     Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
-    
+
     lights.push_back(thirdLight);
-        for(int i = 1 ; i < 10; i++){
-        for(int j = 1; j < 10 ; j++){
-            Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
-            Mesh sphereMesh = loadModel(sphereMeshFilename);
-            sphereMesh.material = Mat;
+    for(int i = 1 ; i < 4; i++){
+      for(int j = 1; j < 4 ; j++){
+          Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
+          Mesh sphereMesh = loadModel(sphereMeshFilename);
+          sphereMesh.material = Mat;
 
-            GameObject* sphere = new GameObject(sphereMesh);
+          GameObject* sphere = new GameObject(sphereMesh);
 
-            sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , 0.0f));
-            sphere->setTexCoordForSphere();
-            sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
-            sphere->mesh.loadBuffers();
-            gameObjects.push_back(sphere);
+          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , 0.0f));
+          sphere->setTexCoordForSphere();
+          sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+          sphere->mesh.loadBuffers();
+          gameObjects.push_back(sphere);
 
-        }
-    } 
+      }
+  } 
 }
