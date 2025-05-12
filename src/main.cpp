@@ -34,6 +34,7 @@ GLFWwindow *window;
 #include "common/light.hpp"
 #include "common/util.hpp"
 #include "common/precalcul.hpp"
+#include "common/rigid_body.hpp"
 
 Mesh loadModel(std::string filename);
 void setScene();
@@ -317,7 +318,7 @@ do {
     glDepthFunc(GL_LESS);
 
     //========= 1er shader ===============
-   /* glUseProgram(programID);
+    glUseProgram(programID);
 
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_2D, textureHeightmap);
@@ -335,10 +336,10 @@ do {
     glBindTexture(GL_TEXTURE_2D, texture3);
     glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
 
-    glm::mat4 model = gameObjects[terrain]->getTransformation();
-    glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    glm::mat4 mvp = projection * view * model;
+    model = gameObjects[terrain]->getTransformation();
+    view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
+    projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    mvp = projection * view * model;
 
     glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE,
                        &mvp[0][0]);
@@ -350,7 +351,7 @@ do {
     Mesh terrainMesh = gameObjects[0]->mesh;
     drawObject(terrainMesh);
 
-    */
+    
 
 
     // PRB =====================================================================
@@ -393,7 +394,7 @@ do {
     //printf("%f, %f, %f \n", camera_position[0], camera_position[1], camera_position[2]);
 
 
-    for (int i = 0 ; i < gameObjects.size(); i++){
+    for (int i = 1 ; i < gameObjects.size(); i++){
         // glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
         //             i == 0 ? 1 : 0);
         // glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
@@ -418,6 +419,26 @@ do {
           gameObjects[i]->rigidBody.resetVelocity();
         }
         gameObjects[i]->rigidBody.physicsLoop(deltaTime);
+
+
+        // boucle colision entre les spheres
+
+        float sphereRadius = 0.2f;
+
+        for (int i = 0; i < gameObjects.size(); ++i) {
+          for (int j = i + 1; j < gameObjects.size(); ++j) {
+              if (i == terrain || j == terrain) continue; // On ignore les collisions avec le terrain ici
+
+              Transform& transformA = gameObjects[i]->transform;
+              Transform& transformB = gameObjects[j]->transform;
+              RigidBody& rigidA = gameObjects[i]->rigidBody;
+              RigidBody& rigidB = gameObjects[j]->rigidBody;
+
+              if (areSpheresColliding(transformA, transformB, sphereRadius, sphereRadius)) {
+                  resolveSphereCollision(rigidA, rigidB, sphereRadius, sphereRadius);
+              }
+            }
+        }
 
 
 
@@ -544,7 +565,7 @@ void setScene() {
 
           GameObject* sphere = new GameObject(sphereMesh);
 
-          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , 0.0f));
+          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , (float)i + j));
           sphere->setTexCoordForSphere();
           sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
           sphere->mesh.loadBuffers();

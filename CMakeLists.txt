@@ -67,6 +67,7 @@ add_executable(main
 	common/vboindexer.cpp
 	common/vboindexer.hpp
 	common/input.cpp
+	common/rigid_body.cpp
 )
 target_link_libraries(main
 	${ALL_LIBS}
