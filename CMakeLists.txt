@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.0)
 project (Tutorials)
 
 find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
 
 
 if( CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR )
@@ -41,6 +42,7 @@ include_directories(
 
 set(ALL_LIBS
 	${OPENGL_LIBRARY}
+	GLEW::GLEW
 	glfw
 	GLEW_1130
 )
@@ -62,6 +64,8 @@ add_executable(main
 	common/controls.hpp
 	common/texture.cpp
 	common/texture.hpp
+	common/mesh.cpp
+	common/mesh.hpp
 	common/objloader.cpp
 	common/objloader.hpp
 	common/vboindexer.cpp

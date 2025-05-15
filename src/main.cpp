@@ -396,16 +396,15 @@ do {
 
 
     for (int i = 1 ; i < gameObjects.size(); i++){
-        // glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
-        //             i == 0 ? 1 : 0);
-        // glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
-        //             i == focusedObject ? 1 : 0);
-
+        
 
         float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-        //printf("terrainHeight : %f \n", terrainHeight);
-
+    
         Transform* transform = &gameObjects[i]->transform;
+
+        float sphereRadius = 0.2f;
+
+        
 
         if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
           transform->setYPosition(terrainHeight);
@@ -414,8 +413,8 @@ do {
           gameObjects[i]->applyGravity(deltaTime);
         } else {
           gameObjects[i]->onGround(deltaTime);
-        }
 
+        }
         bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
         if (!objectInTerrain) {
           gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
@@ -423,10 +422,43 @@ do {
         }
         gameObjects[i]->rigidBody.physicsLoop(deltaTime);
 
+        glm::vec3 vel = gameObjects[i]->rigidBody.currentVelocity;
 
+        glm::vec3 origin = transform->position;
+        glm::vec3 direction = glm::normalize(vel);
+        float t;
+
+        printf("velocity %f, %f, %f \n",vel.x, vel.y, vel.z);
+
+        
+        float minBounceVelocity = 0.2f;
+
+        float maxDistance = glm::length(vel) * deltaTime;
+        glm::vec3 normal;
+      
+        if (rayIntersectsMesh(origin, direction, gameObjects[0]->mesh, t, normal)) {
+        if (t < maxDistance) {
+            // Corriger la position en évitant que la balle soit dans le sol
+            transform->position = origin + direction * t + normal * (sphereRadius + 0.01f);
+
+            // Calcul du rebond
+            glm::vec3 reflected = glm::reflect(vel, normal);
+
+            // Si vitesse trop faible ou angle très faible, on considère que la balle s’arrête
+            if (glm::length(reflected) < minBounceVelocity || std::abs(reflected.y) < 0.05f) {
+                reflected = glm::vec3(0.0f);
+                gameObjects[i]->rigidBody.stopGravity();
+                gameObjects[i]->onGround(deltaTime);
+            }
+
+            // Appliquer la nouvelle vitesse avec atténuation
+            gameObjects[i]->rigidBody.currentVelocity = reflected * 0.4f;
+        }
+    }
+        
         // boucle colision entre les spheres
 
-        float sphereRadius = 0.2f;
+        
 
         for (int i = 0; i < gameObjects.size(); ++i) {
           for (int j = i + 1; j < gameObjects.size(); ++j) {
@@ -544,7 +576,7 @@ void setScene2() {
 
       GameObject *course = new GameObject(courseMesh);
 
-      course->translate(glm::vec3(0.f, 0.f , 0.f));
+      course->translate(glm::vec3(0.f, 0.0f , 0.f));
       course->scale(glm::vec3(1.0f, 1.0f, 1.0f));
 
       course->mesh.loadBuffers();
@@ -580,7 +612,7 @@ void setScene2() {
 
   GameObject* sphere = new GameObject(sphereMesh);
 
-  sphere->translate(glm::vec3(0.0f, 0.0f, 0.0f));
+  sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
   sphere->mesh.loadBuffers();
