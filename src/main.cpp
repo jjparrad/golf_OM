@@ -37,6 +37,7 @@ GLFWwindow *window;
 #include "common/rigid_body.hpp"
 
 Mesh loadModel(std::string filename);
+void setScene2();
 void setScene();
 void loadGameObject(GameObject object, GLuint vertexbuffer,
                     GLuint texturebuffer, GLuint elementbuffer);
@@ -45,7 +46,7 @@ void loadGameObject(GameObject object, GLuint vertexbuffer,
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char *TEXTURE_LOW_PATH = "../assets/textures/grass.png";
+const char *TEXTURE_LOW_PATH = "../assets/golf_course/Textures/colormap.png";
 const char *TEXTURE_MID_PATH = "../assets/textures/rock.png";
 const char *TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
 
@@ -224,7 +225,7 @@ int main( void )
   GLuint elementbuffer;
   glGenBuffers(1, &elementbuffer);
 
-  setScene();
+  setScene2();
   int terrain = 0;
 
   // For speed computation
@@ -402,6 +403,7 @@ do {
 
 
         float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
+        printf("terrainHeight : %f \n", terrainHeight);
         Transform* transform = &gameObjects[i]->transform;
 
         if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
@@ -520,21 +522,72 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 void setScene2() {
-  GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
-                                        heightmapNrChannels, heightmapData);
-  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
-  gameObjects.push_back(surface);
 
+  std::vector<unsigned short> indices;
+  std::vector<glm::vec3> vertices;
+  std::vector<glm::vec2> texCoords;
+
+
+  Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
+  lights.push_back(firstLight);
+
+  Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
+  lights.push_back(secondLight);
+
+  Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
+
+  if (loadOBJ("../assets/golf_course/golf_course.obj",
+            "../assets/golf_course/golf_course.mtl",
+            indices, vertices, texCoords)) {
+      Mesh courseMesh(indices, vertices, texCoords);
+
+      GameObject *course = new GameObject(courseMesh);
+
+      gameObjects.push_back(course);
+
+  }
+
+  indices.clear();
+  vertices.clear();
+  texCoords.clear();
+
+  /*if (loadOBJ("../assets/Golf_Ball.obj",indices, vertices, texCoords)){
+
+      printf("test: %d \n", vertices.size());
+
+      Mesh ballMesh(indices, vertices, texCoords);
+      Material mat = Material( glm::vec3(0.9f,0.9f,0.9f), 0.1, 0.7, 1.0);
+      ballMesh.material = mat;
+
+      GameObject *ball = new GameObject(ballMesh);
+      
+      ball->translate(glm::vec3(0.f, 0.f , 0.f));
+      ball->scale(glm::vec3(2.5f, 2.5f, 2.5f));
+      ball->mesh.loadBuffers();
+      ball->setTexCoordForSphere();
+      gameObjects.push_back(ball);
+  }*/
   std::string sphereMeshFilename("../models/sphere.off");
-  std::string sphereMeshLowFilename("../models/suzanne.off");
+  for(int i = 1 ; i < 4; i++){
+      for(int j = 1; j < 4 ; j++){
+          Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
+          Mesh sphereMesh = loadModel(sphereMeshFilename);
+          sphereMesh.material = Mat;
 
-  Mesh sphereMesh = loadModel(sphereMeshFilename);
-  GameObject *sphere = new GameObject(sphereMesh);
-  sphere->translate(glm::vec3(-4.5f, 1.0f, 4.5f));
-  sphere->setTexCoordForSphere();
-  sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
-  sphere->mesh.loadBuffers();
-  gameObjects.push_back(sphere);
+          GameObject* sphere = new GameObject(sphereMesh);
+
+          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , (float)i + j));
+          sphere->setTexCoordForSphere();
+          sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+          sphere->mesh.loadBuffers();
+          gameObjects.push_back(sphere);
+
+      }
+  } 
+
+
+
+
 }
 
 void setScene() {
