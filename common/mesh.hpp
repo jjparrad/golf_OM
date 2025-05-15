@@ -156,9 +156,16 @@ public:
                 float px = position[0];
                 float py = position[2];
 
-                float w1 = ((yv2 - yv3) * (px - xv3) + (xv3 - xv2) * (py - yv3)) / ((yv2 - yv3) * (xv1 - xv3) + (xv3 - xv2) * (yv1 - yv3));
-                float w2 = ((yv3 - yv1) * (px - xv3) + (xv1 - xv3) * (py - yv3)) / ((yv2 - yv3) * (xv1 - xv3) + (xv3 - xv2) * (yv1 - yv3));
+                float denom = ((yv2 - yv3) * (xv1 - xv3) + (xv3 - xv2) * (yv1 - yv3));
+
+                if (std::abs(denom) < 1e-6f) {
+                    continue; 
+                }
+
+                float w1 = ((yv2 - yv3) * (px - xv3) + (xv3 - xv2) * (py - yv3)) / denom;
+                float w2 = ((yv3 - yv1) * (px - xv3) + (xv1 - xv3) * (py - yv3)) / denom;
                 float w3 = 1 - w1 - w2;
+
 
                 return vertices[v1Idx][1] * w1 + vertices[v2Idx][1] * w2 + vertices[v3Idx][1] * w3;
             }

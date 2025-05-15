@@ -403,7 +403,8 @@ do {
 
 
         float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-        printf("terrainHeight : %f \n", terrainHeight);
+        //printf("terrainHeight : %f \n", terrainHeight);
+
         Transform* transform = &gameObjects[i]->transform;
 
         if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
@@ -543,6 +544,10 @@ void setScene2() {
 
       GameObject *course = new GameObject(courseMesh);
 
+      course->translate(glm::vec3(0.f, 0.f , 0.f));
+      course->scale(glm::vec3(1.0f, 1.0f, 1.0f));
+
+      course->mesh.loadBuffers();
       gameObjects.push_back(course);
 
   }
@@ -568,23 +573,20 @@ void setScene2() {
       gameObjects.push_back(ball);
   }*/
   std::string sphereMeshFilename("../models/sphere.off");
-  for(int i = 1 ; i < 4; i++){
-      for(int j = 1; j < 4 ; j++){
-          Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
-          Mesh sphereMesh = loadModel(sphereMeshFilename);
-          sphereMesh.material = Mat;
+  
+  Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), 0.5, 0.5, 1.0);
+  Mesh sphereMesh = loadModel(sphereMeshFilename);
+  sphereMesh.material = Mat;
 
-          GameObject* sphere = new GameObject(sphereMesh);
+  GameObject* sphere = new GameObject(sphereMesh);
 
-          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , (float)i + j));
-          sphere->setTexCoordForSphere();
-          sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
-          sphere->mesh.loadBuffers();
-          gameObjects.push_back(sphere);
+  sphere->translate(glm::vec3(0.0f, 0.0f, 0.0f));
+  sphere->setTexCoordForSphere();
+  sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
+  sphere->mesh.loadBuffers();
+  gameObjects.push_back(sphere);
 
-      }
-  } 
-
+  
 
 
 

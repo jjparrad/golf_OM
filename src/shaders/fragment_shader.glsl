@@ -6,9 +6,7 @@ flat in int fragFocus;
 flat in int fragUseHeight;
 
 uniform sampler2D textureImgLow;
-uniform sampler2D textureImgMid;
-uniform sampler2D textureImgHigh;
-uniform sampler2D heightmap;
+
 
 // Ouput data
 out vec4 color;
