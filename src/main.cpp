@@ -639,17 +639,18 @@ void setScene2() {
   sphereMesh.material = Mat;
 
   GameObject* sphere = new GameObject(sphereMesh);
-
   sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
-  
-
-
-
+  GameObject* sphere2 = new GameObject(sphereMesh);
+  sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
+  sphere2->setTexCoordForSphere();
+  sphere2->scale(glm::vec3(0.1f, 0.1f, 0.1f));
+  sphere2->mesh.loadBuffers();
+  gameObjects.push_back(sphere2);
 }
 
 void setScene() {
