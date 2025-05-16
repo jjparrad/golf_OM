@@ -28,6 +28,7 @@ GLFWwindow *window;
 #include <common/objloader.hpp>
 #include <common/vboindexer.hpp>
 #include <common/game_object.hpp>
+#include "common/camera.hpp"
 #include "common/input.hpp"
 #include "common/surface.hpp"
 #include "common/material.hpp"
@@ -60,11 +61,6 @@ const char *TEXTURE_EARTH_PATH = "../assets/textures/chess.jpg";
 unsigned char *heightmapData;
 int heightmapWidth, heightmapHeight, heightmapNrChannels;
 
-// camera
-glm::vec3 camera_position = glm::vec3(0.0f, 5.0f, 5.0f);
-glm::vec3 camera_target = glm::normalize(glm::vec3(0.0f, -1.0f, -1.0f));
-glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-
 float DISTANCE_LOW_RESOLUTION = 10.0;
 
 // timing
@@ -81,6 +77,10 @@ std::vector<Light> lights;
 int focusedObject = -1;
 
 /*******************************************************************************/
+
+void printVec3(glm::vec3 vector) {
+  std::cout << "x: " << vector.x << " | y: " << vector.y << " | z: " << vector.z << std::endl;
+}
 
 void drawObject(Mesh mesh) {
     glBindVertexArray(mesh.vaoID);
@@ -226,7 +226,8 @@ int main( void )
 
   setScene();
   int terrain = 0;
-
+  Camera camera;
+  
   // For speed computation
   lastFrame = glfwGetTime();
 
@@ -270,18 +271,26 @@ int main( void )
 
 
 // ========================================================
+  glm::vec3 camera_target;
+  glm::vec3 camera_position;
+  glm::vec3 camera_up;
 
-
-
-do {
+  do {
     // Measure speed
     float currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
 
+    if (focusedObject != -1) {
+      camera.updatePosition();
+    }
+
+    camera_target = camera.target;
+    camera_position = camera.position;
+    camera_up = camera.up;
+
     // input
-    processInput(window, deltaTime, currentFrame, camera_position,
-                 camera_target, camera_up, focusedObject, gameObjects);
+    processInput(window, deltaTime, currentFrame, camera, focusedObject, gameObjects);
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -439,10 +448,7 @@ do {
               }
             }
         }
-
-
-
-
+          
         glm::mat4 model = gameObjects[i]->getTransformation();
         glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
