@@ -94,7 +94,11 @@ public:
     float adjustHeight(GameObject* object) {
         glm::vec3 localPosition = glm::vec3(glm::inverse(transform.getMatrix()) * glm::vec4(object->transform.position, 1.0f));
         
+        
+        
         float localHeight = mesh.getHeightInPosition(localPosition);
+        
+
         float globalHeight = localHeight + transform.position.y;
 
         return globalHeight;

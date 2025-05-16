@@ -38,6 +38,7 @@ GLFWwindow *window;
 #include "common/rigid_body.hpp"
 
 Mesh loadModel(std::string filename);
+void setScene2();
 void setScene();
 void loadGameObject(GameObject object, GLuint vertexbuffer,
                     GLuint texturebuffer, GLuint elementbuffer);
@@ -46,7 +47,7 @@ void loadGameObject(GameObject object, GLuint vertexbuffer,
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char *TEXTURE_LOW_PATH = "../assets/textures/grass.png";
+const char *TEXTURE_LOW_PATH = "../assets/golf_course/Textures/colormap.png";
 const char *TEXTURE_MID_PATH = "../assets/textures/rock.png";
 const char *TEXTURE_HIGH_PATH = "../assets/textures/snowrocks.png";
 
@@ -224,7 +225,7 @@ int main( void )
   GLuint elementbuffer;
   glGenBuffers(1, &elementbuffer);
 
-  setScene();
+  setScene2();
   int terrain = 0;
   Camera camera;
   
@@ -404,35 +405,91 @@ int main( void )
 
 
     for (int i = 1 ; i < gameObjects.size(); i++){
-        // glUniform1i(glGetUniformLocation(programBallID, "useHeight"),
-        //             i == 0 ? 1 : 0);
-        // glUniform1i(glGetUniformLocation(programBallID, "isFocused"),
-        //             i == focusedObject ? 1 : 0);
+        
+        float minBounceVelocity = 0.2f;
+        float sphereRadius = 0.1f;
+        float restitutionFactor = 0.7f;
+        float rollFriction = 0.5f;
 
+        RigidBody& rb = gameObjects[i]->rigidBody;
+        Transform& tf = gameObjects[i]->transform;
 
-        float terrainHeight = gameObjects[terrain]->adjustHeight(gameObjects[i]);
-        Transform* transform = &gameObjects[i]->transform;
+        rb.applyGravity(deltaTime);
+        rb.physicsLoop(deltaTime);
 
-        if (transform->position[1] < terrainHeight - SURFACE_DISTANCE_DELTA) {
-          transform->setYPosition(terrainHeight);
-          gameObjects[i]->rigidBody.stopGravity();
-        } else if (transform->position[1] > terrainHeight + SURFACE_DISTANCE_DELTA) {
-          gameObjects[i]->applyGravity(deltaTime);
-        } else {
-          gameObjects[i]->onGround(deltaTime);
+        
+        float terrainHeight = gameObjects[0]->adjustHeight(gameObjects[i]);
+        printf("terrainHeight : %f \n", terrainHeight);
+        if (tf.position.y < terrainHeight + sphereRadius) {
+            tf.setYPosition(terrainHeight + sphereRadius);
+            rb.stopGravity();
+
+            glm::vec3 down = glm::vec3(0.0f, -1.0f, 0.0f);
+            float tDummy;
+            glm::vec3 groundNormal;
+
+            if (rayIntersectsMesh(tf.position + glm::vec3(0, 0.5f, 0), down, gameObjects[0]->mesh, tDummy, groundNormal)) {
+
+                
+                rb.applySlopeForce(deltaTime, groundNormal);
+
+                
+                float speed = glm::length(rb.currentVelocity);
+                if (speed > 1e-4f) {
+                    glm::vec3 frictionDir = -glm::normalize(rb.currentVelocity);
+                    float frictionStrength = rollFriction * deltaTime;
+                    glm::vec3 friction = frictionStrength * frictionDir;
+
+                    
+                    if (glm::length(friction) > speed)
+                        friction = -rb.currentVelocity;
+
+                    rb.currentVelocity += friction;
+                } else {
+                    
+                    rb.currentVelocity = glm::vec3(0.0f);
+                }
+            }
         }
 
-        bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
+
+        
+        glm::vec3 vel = rb.currentVelocity;
+        if (glm::length(vel) > 1e-4f) {
+            glm::vec3 dir = glm::normalize(vel);
+            float maxDist = glm::length(vel) * deltaTime;
+            float t; glm::vec3 normal;
+            if (rayIntersectsMesh(tf.position, dir, gameObjects[0]->mesh, t, normal)
+                && t < maxDist) {
+
+               
+                tf.position += dir * t;
+                
+                glm::vec3 reflected = glm::reflect(vel, normal) * restitutionFactor;
+                if (glm::length(reflected) < minBounceVelocity) {
+                    reflected = glm::vec3(0.0f);
+                    rb.stopGravity();
+                    rb.slowDown(deltaTime);
+                }
+                rb.currentVelocity = reflected;
+            }
+        }
+
+
+
+        /*bool objectInTerrain = gameObjects[terrain]->isInBounds(gameObjects[i]);
         if (!objectInTerrain) {
           gameObjects[i]->transform.position = glm::vec3(-4.5f, 1.0f, 4.5f);
           gameObjects[i]->rigidBody.resetVelocity();
         }
-        gameObjects[i]->rigidBody.physicsLoop(deltaTime);
+        gameObjects[i]->rigidBody.physicsLoop(deltaTime);*/
 
 
+        
+        
         // boucle colision entre les spheres
 
-        float sphereRadius = 0.2f;
+        
 
         for (int i = 0; i < gameObjects.size(); ++i) {
           for (int j = i + 1; j < gameObjects.size(); ++j) {
@@ -526,21 +583,73 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 void setScene2() {
-  GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
-                                        heightmapNrChannels, heightmapData);
-  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
-  gameObjects.push_back(surface);
 
+  std::vector<unsigned short> indices;
+  std::vector<glm::vec3> vertices;
+  std::vector<glm::vec2> texCoords;
+
+
+  Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
+  lights.push_back(firstLight);
+
+  Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
+  lights.push_back(secondLight);
+
+  Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
+
+  if (loadOBJ("../assets/golf_course/golf_course.obj",
+            "../assets/golf_course/golf_course.mtl",
+            indices, vertices, texCoords)) {
+      Mesh courseMesh(indices, vertices, texCoords);
+
+      GameObject *course = new GameObject(courseMesh);
+
+      course->translate(glm::vec3(0.f, 0.0f , 0.f));
+      course->scale(glm::vec3(1.0f, 1.0f, 1.0f));
+
+      course->mesh.loadBuffers();
+      gameObjects.push_back(course);
+
+  }
+
+  indices.clear();
+  vertices.clear();
+  texCoords.clear();
+
+  /*if (loadOBJ("../assets/Golf_Ball.obj",indices, vertices, texCoords)){
+
+      printf("test: %d \n", vertices.size());
+
+      Mesh ballMesh(indices, vertices, texCoords);
+      Material mat = Material( glm::vec3(0.9f,0.9f,0.9f), 0.1, 0.7, 1.0);
+      ballMesh.material = mat;
+
+      GameObject *ball = new GameObject(ballMesh);
+      
+      ball->translate(glm::vec3(0.f, 0.f , 0.f));
+      ball->scale(glm::vec3(2.5f, 2.5f, 2.5f));
+      ball->mesh.loadBuffers();
+      ball->setTexCoordForSphere();
+      gameObjects.push_back(ball);
+  }*/
   std::string sphereMeshFilename("../models/sphere.off");
-  std::string sphereMeshLowFilename("../models/suzanne.off");
-
+  
+  Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), 0.5, 0.5, 1.0);
   Mesh sphereMesh = loadModel(sphereMeshFilename);
-  GameObject *sphere = new GameObject(sphereMesh);
-  sphere->translate(glm::vec3(-4.5f, 1.0f, 4.5f));
+  sphereMesh.material = Mat;
+
+  GameObject* sphere = new GameObject(sphereMesh);
+
+  sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
+
+  
+
+
+
 }
 
 void setScene() {

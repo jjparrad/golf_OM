@@ -1,12 +1,16 @@
 #include <vector>
 #include <stdio.h>
-#include <stdlib.h>
-#include <vector>
+
 #include <iostream>
 #include <cstring>
 #include <fstream>
 
 #include <glm/glm.hpp>
+#include <map>
+#include <sstream>
+
+
+
 
 #include "objloader.hpp"
 
@@ -20,98 +24,155 @@
 // - More secure. Change another line and you can inject code.
 // - Loading from memory, stream, etc
 
-bool loadOBJ(
-        const char * path,
-        std::vector<glm::vec3> & out_vertices,
-        std::vector<glm::vec2> & out_uvs,
-        std::vector<glm::vec3> & out_normals
-        ){
-    printf("Loading OBJ file %s...\n", path);
+std::string loadMTL(const char* mtl_path) {
+    std::ifstream mtlFile(mtl_path);
+    if (!mtlFile) {
+        std::cerr << "Impossible d'ouvrir le fichier MTL : " << mtl_path << std::endl;
+        return "";
+    }
 
-    std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
-    std::vector<glm::vec3> temp_vertices;
-    std::vector<glm::vec2> temp_uvs;
-    std::vector<glm::vec3> temp_normals;
+    std::string line;
+    std::string texturePath;
+    while (std::getline(mtlFile, line)) {
+        std::istringstream iss(line);
+        std::string keyword;
+        iss >> keyword;
+        if (keyword == "map_Kd") {
+            iss >> texturePath;
+            break;
+        }
+    }
 
+    return texturePath;
+}
 
-    FILE * file = fopen(path, "r");
-    if( file == NULL ){
-        printf("Impossible to open the file ! Are you in the right path ? See Tutorial 1 for details\n");
-        getchar();
+bool loadOBJ(const char* obj_path, const char* mtl_path,
+             std::vector<unsigned short>& out_indices,
+             std::vector<glm::vec3>& out_vertices,
+             std::vector<glm::vec2>& out_uvs)
+{
+    std::ifstream objFile(obj_path);
+    if (!objFile) {
+        std::cerr << "Impossible d'ouvrir le fichier OBJ : " << obj_path << std::endl;
         return false;
     }
 
-    while( 1 ){
+    std::vector<glm::vec3> temp_vertices;
+    std::vector<glm::vec2> temp_uvs;
+    std::vector<std::pair<unsigned int, unsigned int>> index_map;
+    std::map<std::pair<unsigned int, unsigned int>, unsigned short> unique_map;
 
-        char lineHeader[128];
-        // read the first word of the line
-        int res = fscanf(file, "%s", lineHeader);
-        if (res == EOF)
-            break; // EOF = End Of File. Quit the loop.
+    std::string line;
+    while (std::getline(objFile, line)) {
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
 
-        // else : parse lineHeader
-
-        if ( strcmp( lineHeader, "v" ) == 0 ){
+        if (prefix == "v") {
             glm::vec3 vertex;
-            fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );
+            iss >> vertex.x >> vertex.y >> vertex.z;
             temp_vertices.push_back(vertex);
-        }else if ( strcmp( lineHeader, "vt" ) == 0 ){
+        } else if (prefix == "vt") {
             glm::vec2 uv;
-            fscanf(file, "%f %f\n", &uv.x, &uv.y );
-            uv.y = -uv.y; // Invert V coordinate since we will only use DDS texture, which are inverted. Remove if you want to use TGA or BMP loaders.
+            iss >> uv.x >> uv.y;
+
+            uv.y = 1.0 - uv.y;
+            
             temp_uvs.push_back(uv);
-        }else if ( strcmp( lineHeader, "vn" ) == 0 ){
-            glm::vec3 normal;
-            fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z );
-            temp_normals.push_back(normal);
-        }else if ( strcmp( lineHeader, "f" ) == 0 ){
-            std::string vertex1, vertex2, vertex3;
-            unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-            if (matches != 9){
-                printf("File can't be read by our simple parser :-( Try exporting with other options\n");
-                fclose(file);
-                return false;
+        } else if (prefix == "f") {
+            for (int i = 0; i < 3; i++) {
+                std::string token;
+                iss >> token;
+                size_t pos1 = token.find('/');
+                size_t pos2 = token.find('/', pos1 + 1);
+
+                unsigned int vi = std::stoi(token.substr(0, pos1)) - 1;
+                unsigned int ti = std::stoi(token.substr(pos1 + 1, pos2 - pos1 - 1)) - 1;
+
+                std::pair<unsigned int, unsigned int> key = {vi, ti};
+
+                if (unique_map.find(key) == unique_map.end()) {
+                    out_vertices.push_back(temp_vertices[vi]);
+                    out_uvs.push_back(temp_uvs[ti]);
+                    unsigned short new_index = (unsigned short)(out_vertices.size() - 1);
+                    unique_map[key] = new_index;
+                    out_indices.push_back(new_index);
+                } else {
+                    out_indices.push_back(unique_map[key]);
+                }
             }
-            vertexIndices.push_back(vertexIndex[0]);
-            vertexIndices.push_back(vertexIndex[1]);
-            vertexIndices.push_back(vertexIndex[2]);
-            uvIndices    .push_back(uvIndex[0]);
-            uvIndices    .push_back(uvIndex[1]);
-            uvIndices    .push_back(uvIndex[2]);
-            normalIndices.push_back(normalIndex[0]);
-            normalIndices.push_back(normalIndex[1]);
-            normalIndices.push_back(normalIndex[2]);
-        }else{
-            // Probably a comment, eat up the rest of the line
-            char stupidBuffer[1000];
-            fgets(stupidBuffer, 1000, file);
         }
-
     }
 
-    // For each vertex of each triangle
-    for( unsigned int i=0; i<vertexIndices.size(); i++ ){
+    // Charger la texture depuis le MTL
+    std::string texturePath = loadMTL(mtl_path);
+    std::cout << "Texture chargée : " << texturePath << std::endl;
 
-        // Get the indices of its attributes
-        unsigned int vertexIndex = vertexIndices[i];
-        unsigned int uvIndex = uvIndices[i];
-        unsigned int normalIndex = normalIndices[i];
-
-        // Get the attributes thanks to the index
-        glm::vec3 vertex = temp_vertices[ vertexIndex-1 ];
-        glm::vec2 uv = temp_uvs[ uvIndex-1 ];
-        glm::vec3 normal = temp_normals[ normalIndex-1 ];
-
-        // Put the attributes in buffers
-        out_vertices.push_back(vertex);
-        out_uvs     .push_back(uv);
-        out_normals .push_back(normal);
-
-    }
-    fclose(file);
     return true;
 }
+
+
+bool loadOBJ(const char* obj_path,
+             std::vector<unsigned short>& out_indices,
+             std::vector<glm::vec3>& out_vertices,
+             std::vector<glm::vec2>& out_uvs)
+{
+    std::ifstream objFile(obj_path);
+    if (!objFile) {
+        std::cerr << "Impossible d'ouvrir le fichier OBJ : " << obj_path << std::endl;
+        return false;
+    }
+
+    std::vector<glm::vec3> temp_vertices;
+    std::vector<glm::vec2> temp_uvs;
+    std::vector<std::pair<unsigned int, unsigned int>> index_map;
+    std::map<std::pair<unsigned int, unsigned int>, unsigned short> unique_map;
+
+    std::string line;
+    while (std::getline(objFile, line)) {
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
+
+        if (prefix == "v") {
+            glm::vec3 vertex;
+            iss >> vertex.x >> vertex.y >> vertex.z;
+            temp_vertices.push_back(vertex);
+        } else if (prefix == "vt") {
+            glm::vec2 uv;
+            iss >> uv.y >> uv.x;
+            temp_uvs.push_back(uv);
+        } else if (prefix == "f") {
+            for (int i = 0; i < 3; i++) {
+                std::string token;
+                iss >> token;
+                size_t pos1 = token.find('/');
+                size_t pos2 = token.find('/', pos1 + 1);
+
+                unsigned int vi = std::stoi(token.substr(0, pos1)) - 1;
+                unsigned int ti = std::stoi(token.substr(pos1 + 1, pos2 - pos1 - 1)) - 1;
+
+                std::pair<unsigned int, unsigned int> key = {vi, ti};
+
+                if (unique_map.find(key) == unique_map.end()) {
+                    out_vertices.push_back(temp_vertices[vi]);
+                    out_uvs.push_back(temp_uvs[ti]);
+                    unsigned short new_index = (unsigned short)(out_vertices.size() - 1);
+                    unique_map[key] = new_index;
+                    out_indices.push_back(new_index);
+                } else {
+                    out_indices.push_back(unique_map[key]);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+
 
 bool loadOFF( const std::string & filename ,
               std::vector< glm::vec3 > & vertices ,

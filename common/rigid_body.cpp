@@ -2,8 +2,12 @@
 #define RIGID_BODY_H
 
 #include <iostream>
+#include <cstdlib>
+#include <float.h>
 #include "rigid_body.hpp"
 #include "transform.hpp"
+
+
 
 RigidBody::RigidBody() = default;
 
@@ -58,6 +62,14 @@ void RigidBody::applySpeed(float time, glm::vec3 velocity) {
     currentVelocity = velocity;
 }
 
+void RigidBody::applySlopeForce(float dt, const glm::vec3& N) {
+    const glm::vec3 G = glm::vec3(0.0f, -9.82f, 0.0f);
+    glm::vec3 slopeForce = G - glm::dot(G, N) * N;
+    // on scale un peu pour sentir le roulement
+    float slopeStrength = 2.5f;
+    currentVelocity += slopeForce * dt * slopeStrength;
+}
+
 
 bool areSpheresColliding(const Transform& a, const Transform& b, float radiusA, float radiusB) {
     float distance = glm::distance(a.position, b.position);
@@ -93,6 +105,61 @@ void resolveSphereCollision(RigidBody& a, RigidBody& b, float radiusA, float rad
         b.currentVelocity += (1.0f / b.mass) * impulse;
     }
 }
+
+
+bool rayIntersectsTriangle(const glm::vec3& origin, const glm::vec3& dir,
+                           const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
+                           float& t) {
+    const float EPSILON = 1e-6f;
+    glm::vec3 edge1 = v1 - v0;
+    glm::vec3 edge2 = v2 - v0;
+    glm::vec3 h = glm::cross(dir, edge2);
+    float a = glm::dot(edge1, h);
+    if (std::abs(a) < EPSILON) return false;
+
+    float f = 1.0 / a;
+    glm::vec3 s = origin - v0;
+    float u = f * glm::dot(s, h);
+    if (u < 0.0 || u > 1.0) return false;
+
+    glm::vec3 q = glm::cross(s, edge1);
+    float v = f * glm::dot(dir, q);
+    if (v < 0.0 || u + v > 1.0) return false;
+
+    float tCandidate = f * glm::dot(edge2, q);
+    if (tCandidate > EPSILON) {
+        t = tCandidate;
+        return true;
+    }
+
+    return false;
+}
+
+
+bool rayIntersectsMesh(const glm::vec3& origin, const glm::vec3& dir,
+                       const Mesh& m, float& tMin, glm::vec3& hitNormal) {
+    bool hit = false;
+    tMin = FLT_MAX;
+
+    for (int i = 0; i < m.indices.size(); i += 3) {
+        glm::vec3 v0 = m.vertices[m.indices[i]];
+        glm::vec3 v1 = m.vertices[m.indices[i+1]];
+        glm::vec3 v2 = m.vertices[m.indices[i+2]];
+
+        float t;
+        if (rayIntersectsTriangle(origin, dir, v0, v1, v2, t)) {
+            if (t < tMin) {
+                tMin = t;
+                hit = true;
+                hitNormal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+            }
+        }
+    }
+
+    return hit;
+}
+
+
 
 
 
