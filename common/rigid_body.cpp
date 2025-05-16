@@ -62,6 +62,14 @@ void RigidBody::applySpeed(float time, glm::vec3 velocity) {
     currentVelocity = velocity;
 }
 
+void RigidBody::applySlopeForce(float dt, const glm::vec3& N) {
+    const glm::vec3 G = glm::vec3(0.0f, -9.82f, 0.0f);
+    glm::vec3 slopeForce = G - glm::dot(G, N) * N;
+    // on scale un peu pour sentir le roulement
+    float slopeStrength = 2.5f;
+    currentVelocity += slopeForce * dt * slopeStrength;
+}
+
 
 bool areSpheresColliding(const Transform& a, const Transform& b, float radiusA, float radiusB) {
     float distance = glm::distance(a.position, b.position);

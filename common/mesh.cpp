@@ -148,8 +148,8 @@ float Mesh::getHeightInPosition(glm::vec3 position) {
     }
   }
 
-  std::cout << "No Projection" << std::endl;
-  return position[1];
+  //std::cout << "No Projection" << std::endl;
+  return -10.0f;
 };
 
 void Mesh::setTexCoordForSphere() {

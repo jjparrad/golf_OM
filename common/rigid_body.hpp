@@ -24,6 +24,7 @@ public:
     void resetVelocity();
     void hit(float time, glm::vec3 direction, float force);
     void applySpeed(float time, glm::vec3 velocity);
+    void applySlopeForce(float time, const glm::vec3& groundNormal);
 };
 
 bool areSpheresColliding(const Transform& a, const Transform& b, float radiusA, float radiusB);
@@ -36,5 +37,7 @@ bool rayIntersectsTriangle(const glm::vec3& origin, const glm::vec3& dir,
 
 bool rayIntersectsMesh(const glm::vec3& origin, const glm::vec3& dir,
                        const Mesh& m, float& tMin, glm::vec3& hitNormal);
+
+
 
 #endif
