@@ -522,8 +522,8 @@ int main( void )
               RigidBody& rigidA = gameObjects[i]->rigidBody;
               RigidBody& rigidB = gameObjects[j]->rigidBody;
 
-              if (areSpheresColliding(transformA, transformB, sphereRadius, sphereRadius)) {
-                  resolveSphereCollision(rigidA, rigidB, sphereRadius, sphereRadius);
+              if (areSpheresColliding(transformA, transformB, sphereRadius/2, sphereRadius/2)) {
+                  resolveSphereCollision(rigidA, rigidB, sphereRadius/2, sphereRadius/2);
               }
             }
         }
