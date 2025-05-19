@@ -6,7 +6,7 @@
 #include <common/game_object.hpp>
 
 #include "common/input.hpp"
-
+#include <stdio.h>
 
 void processZoom(GLFWwindow *window,float deltaTime, float currentFrame, Camera &camera){
     //Camera zoom in and out
@@ -129,10 +129,11 @@ void processGameInputs(GLFWwindow *window, float deltaTime, float currentFrame, 
     } else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && hitPressed) {
         hitPressed = false;
         float force = currentFrame - pressTime;
-        force = force > 1.0 ? 1.0 : force;
+        force = force > 1.5 ? 1.5 : force;
         float interpolatedForce = 1 - std::pow((1 - force), 3);
-        glm::vec3 a = glm::vec3(camera.target.x, 1.0, camera.target.z);
-        gameObjects[focusedObject]->rigidBody.hit(deltaTime, glm::normalize(a), 500.0 * force);
+        glm::vec3 a = glm::vec3(camera.target.x, 0.0, camera.target.z);
+        gameObjects[focusedObject]->rigidBody.hit(deltaTime, glm::normalize(a), 800.0 * force);
+        printf("force: %f \n", force);
     }
 }
 

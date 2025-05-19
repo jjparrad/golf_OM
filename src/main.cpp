@@ -74,6 +74,7 @@ float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
+std::vector<glm::vec3> lastPlayerspos;
 std::vector<Light> lights;
 int focusedObject = -1;
 
@@ -407,7 +408,7 @@ int main( void )
     for (int i = 1 ; i < gameObjects.size(); i++){
         
         float minBounceVelocity = 0.2f;
-        float sphereRadius = 0.1f;
+        float sphereRadius = 0.05f;
         float restitutionFactor = 0.7f;
         float rollFriction = 0.5f;
 
@@ -417,12 +418,35 @@ int main( void )
         rb.applyGravity(deltaTime);
         rb.physicsLoop(deltaTime);
 
+        float speed = glm::length(rb.currentVelocity);
+
+
+        if (tf.position.y < -4.0f) {
+            rb.currentVelocity = glm::vec3(0.0f,0.0f,0.0f);
+            tf.setPosition(lastPlayerspos[i]);
+          }
+
         
         float terrainHeight = gameObjects[0]->adjustHeight(gameObjects[i]);
-        printf("terrainHeight : %f \n", terrainHeight);
-        if (tf.position.y < terrainHeight + sphereRadius) {
-            tf.setYPosition(terrainHeight + sphereRadius);
-            rb.stopGravity();
+        float tDummy;
+        glm::vec3 groundNormal;
+        if (rayIntersectsMesh(tf.position, glm::vec3(0.0f, -1.0f, 0.0f), gameObjects[0]->mesh, tDummy, groundNormal)) {
+            float terrainHeight = tf.position.y - tDummy;
+            float penetration = (terrainHeight + sphereRadius) - tf.position.y;
+            if (penetration > 0.0f) {
+                glm::vec3 correction = glm::vec3(0.0f, penetration, 0.0f);
+                tf.position += correction;
+
+                speed = glm::length(rb.currentVelocity);
+                if(speed < 0.2) lastPlayerspos[i] = tf.position + glm::vec3(0.0f,1.0f,0.0f);
+
+                // Applique une force de rebond si nécessaire
+                if (rb.currentVelocity.y < 0.0f)
+                    rb.currentVelocity.y *= -restitutionFactor;
+
+                rb.stopGravity();
+            }
+        
 
             glm::vec3 down = glm::vec3(0.0f, -1.0f, 0.0f);
             float tDummy;
@@ -434,7 +458,7 @@ int main( void )
                 rb.applySlopeForce(deltaTime, groundNormal);
 
                 
-                float speed = glm::length(rb.currentVelocity);
+                speed = glm::length(rb.currentVelocity);
                 if (speed > 1e-4f) {
                     glm::vec3 frictionDir = -glm::normalize(rb.currentVelocity);
                     float frictionStrength = rollFriction * deltaTime;
@@ -452,7 +476,6 @@ int main( void )
             }
         }
 
-
         
         glm::vec3 vel = rb.currentVelocity;
         if (glm::length(vel) > 1e-4f) {
@@ -462,7 +485,6 @@ int main( void )
             if (rayIntersectsMesh(tf.position, dir, gameObjects[0]->mesh, t, normal)
                 && t < maxDist) {
 
-               
                 tf.position += dir * t;
                 
                 glm::vec3 reflected = glm::reflect(vel, normal) * restitutionFactor;
@@ -611,27 +633,13 @@ void setScene2() {
       gameObjects.push_back(course);
 
   }
+  lastPlayerspos.push_back(glm::vec3(0.0f,0.0f,0.0f));
 
   indices.clear();
   vertices.clear();
   texCoords.clear();
 
-  /*if (loadOBJ("../assets/Golf_Ball.obj",indices, vertices, texCoords)){
 
-      printf("test: %d \n", vertices.size());
-
-      Mesh ballMesh(indices, vertices, texCoords);
-      Material mat = Material( glm::vec3(0.9f,0.9f,0.9f), 0.1, 0.7, 1.0);
-      ballMesh.material = mat;
-
-      GameObject *ball = new GameObject(ballMesh);
-      
-      ball->translate(glm::vec3(0.f, 0.f , 0.f));
-      ball->scale(glm::vec3(2.5f, 2.5f, 2.5f));
-      ball->mesh.loadBuffers();
-      ball->setTexCoordForSphere();
-      gameObjects.push_back(ball);
-  }*/
   std::string sphereMeshFilename("../models/sphere.off");
   
   Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), 0.5, 0.5, 1.0);
@@ -640,15 +648,17 @@ void setScene2() {
 
   GameObject* sphere = new GameObject(sphereMesh);
   sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
+  lastPlayerspos.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
   sphere->setTexCoordForSphere();
-  sphere->scale(glm::vec3(0.1f, 0.1f, 0.1f));
+  sphere->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
   GameObject* sphere2 = new GameObject(sphereMesh);
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
+  lastPlayerspos.push_back(glm::vec3(0.2f, 1.2f, 0.0f));
   sphere2->setTexCoordForSphere();
-  sphere2->scale(glm::vec3(0.1f, 0.1f, 0.1f));
+  sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
 }
