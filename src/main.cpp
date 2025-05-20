@@ -81,6 +81,8 @@ std::vector<glm::vec3> lastPlayerspos;
 std::vector<Light> lights;
 int focusedObject = -1;
 
+//text
+
 /*******************************************************************************/
 
 void printVec3(glm::vec3 vector) {
@@ -322,7 +324,7 @@ int main( void )
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
 
-    
+
 
 
     //=========== Gestion Camera ================
@@ -538,7 +540,7 @@ int main( void )
         
         // boucle colision entre les spheres
 
-        
+        printf("player : %d \n", focusedObject);
 
         for (int i = 0; i < gameObjects.size(); ++i) {
           for (int j = i + 1; j < gameObjects.size(); ++j) {
@@ -589,7 +591,7 @@ int main( void )
         drawObject(sp);
     }
 
-    RenderText(programText, "Hello World", 25.0f, 25.0f, 1.0f, glm::vec3(1.0f, 0.0f, 1.0f));
+    RenderText(programText, playerText(focusedObject), 25.0f, 25.0f, 0.6f, glm::vec3(0.0f, 0.0f, 0.0f));
 
     // Swap buffers
     glfwSwapBuffers(window);

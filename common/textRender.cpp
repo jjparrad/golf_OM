@@ -132,3 +132,19 @@ void RenderText(GLuint s, std::string text, float x, float y, float scale, glm::
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+std::string playerText(int focusedObject){
+    if( focusedObject == -1){
+        return std::string("Camera libre");
+    }
+    if(focusedObject == 0){
+        return std::string("Bouger le terrain (a enlever)");
+    }
+    if(focusedObject == 1){
+        return std::string("Joueur 1");
+    }
+    if(focusedObject == 2){
+        return std::string("Joueur 2");
+    }
+    return "inconnu";
+}
