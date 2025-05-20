@@ -4,6 +4,11 @@ project (Tutorials)
 
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(Freetype REQUIRED)
+
+include_directories(${FREETYPE_INCLUDE_DIRS})
+
+
 
 
 if( CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR )
@@ -45,6 +50,7 @@ set(ALL_LIBS
 	GLEW::GLEW
 	glfw
 	GLEW_1130
+
 )
 
 add_definitions(
@@ -72,9 +78,11 @@ add_executable(main
 	common/vboindexer.hpp
 	common/input.cpp
 	common/rigid_body.cpp
+	common/textRender.cpp
 )
 target_link_libraries(main
 	${ALL_LIBS}
+	${FREETYPE_LIBRARIES}
 )
 # Xcode and Visual working directories
 set_target_properties(main PROPERTIES XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/")

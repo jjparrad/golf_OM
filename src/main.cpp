@@ -24,6 +24,7 @@ GLFWwindow *window;
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "common/textRender.hpp"
 #include <common/shader.hpp>
 #include <common/objloader.hpp>
 #include <common/vboindexer.hpp>
@@ -204,6 +205,14 @@ int main( void )
 
   GLuint prefilterShader = LoadShaders("../src/shaders/prefilter_vertex.glsl","../src/shaders/prefilterShader.glsl");
 
+  GLuint programText = LoadShaders("../src/shaders/text_vertex_shader.glsl", "../src/shaders/text_fragment_shader.glsl");
+
+
+  InitTextRendering("../assets/fonts/arial.ttf");
+
+  glm::mat4 textprojection = glm::ortho(0.0f, static_cast<float>(SCR_WIDTH), 0.0f, static_cast<float>(SCR_HEIGHT));
+    glUseProgram(programText);
+    glUniformMatrix4fv(glGetUniformLocation(programText, "projection"), 1, GL_FALSE, glm::value_ptr(textprojection));
 
   std::vector<unsigned short> indices;
   std::vector<glm::vec3> indexed_vertices;
@@ -301,6 +310,9 @@ int main( void )
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
+
+    
+
 
     //=========== Gestion Camera ================
     glm::mat4 model = glm::mat4(1.0f);
@@ -411,7 +423,7 @@ int main( void )
         float minBounceVelocity = 0.2f;
         float sphereRadius = 0.05f;
         float restitutionFactor = 0.7f;
-        float rollFriction = 0.5f;
+        float rollFriction = 0.4f;
 
         RigidBody& rb = gameObjects[i]->rigidBody;
         Transform& tf = gameObjects[i]->transform;
@@ -423,7 +435,7 @@ int main( void )
 
         float speed = glm::length(rb.currentVelocity);
 
-        if( i == 1) printf("ismoving: %s \n", rb.ismoving ? "true" : "false");
+        //if( i == 1) printf("ismoving: %s \n", rb.ismoving ? "true" : "false");
         
 
         if (tf.position.y < -4.0f) {
@@ -569,6 +581,7 @@ int main( void )
         drawObject(sp);
     }
 
+    RenderText(programText, "Hello World", 25.0f, 25.0f, 1.0f, glm::vec3(1.0f, 0.0f, 1.0f));
 
     // Swap buffers
     glfwSwapBuffers(window);

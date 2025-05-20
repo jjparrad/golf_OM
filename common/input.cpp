@@ -130,12 +130,17 @@ void processGameInputs(GLFWwindow *window, float deltaTime, float currentFrame, 
     } else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && hitPressed) {
             hitPressed = false;
             float force = currentFrame - pressTime;
-            force = force > 1.0 ? 1.0 : force;
+            force = force > 1.2 ? 1.2 : force;
             float interpolatedForce = 1 - std::pow((1 - force), 3);
             glm::vec3 a = glm::vec3(camera.target.x, 0.0, camera.target.z);
-            gameObjects[focusedObject]->rigidBody.hit(deltaTime, glm::normalize(a), 800.0 * force);
-            gameObjects[focusedObject]->rigidBody.ismoving = true;
-            printf("force: %f \n", force);
+            if(!gameObjects[focusedObject]->rigidBody.ismoving){
+                gameObjects[focusedObject]->rigidBody.hit(deltaTime, glm::normalize(a), 800.0 * force);
+                gameObjects[focusedObject]->rigidBody.ismoving = true;
+                printf("force: %f \n", force);
+            }else{
+                force = 0;
+            }
+            
     }
 }
 
