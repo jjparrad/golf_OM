@@ -75,7 +75,7 @@ float SURFACE_DISTANCE_DELTA = 0.08;
 // Scene objects
 std::vector<GameObject*> gameObjects;
 std::vector<glm::vec3> lastPlayerspos;
-std::vector<GameObject*> cameraTargets;
+std::vector<glm::vec3> lastPlayersDir;
 std::vector<Light> lights;
 int focusedObject = -1;
 
@@ -229,7 +229,7 @@ int main( void )
 
   setScene2();
   int terrain = 0;
-  Camera camera(cameraTargets[0]);
+  Camera camera;
   
   // For speed computation
   lastFrame = glfwGetTime();
@@ -289,6 +289,9 @@ int main( void )
     camera_target = camera.target;
     camera_position = camera.position;
     camera_up = camera.up;
+    if (focusedObject != -1) {
+      gameObjects[focusedObject]->cameraDirection = camera_target;
+    }
 
     // input
     processInput(window, deltaTime, currentFrame, camera, focusedObject, gameObjects);
@@ -663,14 +666,6 @@ void setScene2() {
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
-
-  GameObject* defaultTarget = new GameObject(sphereMesh);
-  defaultTarget->usePhysics = false;
-  defaultTarget->translate(glm::vec3(-15.0f, 2.0f, -2.0f));
-  defaultTarget->setTexCoordForSphere();
-  defaultTarget->mesh.loadBuffers();
-  gameObjects.push_back(defaultTarget);
-  cameraTargets.push_back(defaultTarget);
 }
 
 void setScene() {
