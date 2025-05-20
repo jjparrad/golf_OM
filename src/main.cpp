@@ -30,6 +30,7 @@ GLFWwindow *window;
 #include <common/vboindexer.hpp>
 #include <common/game_object.hpp>
 #include "common/camera.hpp"
+#include "common/player.hpp"
 #include "common/input.hpp"
 #include "common/surface.hpp"
 #include "common/material.hpp"
@@ -41,6 +42,7 @@ GLFWwindow *window;
 Mesh loadModel(std::string filename);
 void setScene2();
 void setScene();
+void changeActivePlayer(int &currentPlayer);
 void loadGameObject(GameObject object, GLuint vertexbuffer,
                     GLuint texturebuffer, GLuint elementbuffer);
 
@@ -238,6 +240,7 @@ int main( void )
   setScene2();
   int terrain = 0;
   Camera camera;
+  Player player;
   
   // For speed computation
   lastFrame = glfwGetTime();
@@ -262,9 +265,6 @@ int main( void )
 
   // For speed computation
   lastFrame = glfwGetTime();
-
-
-  
   float currentTime = glfwGetTime();
   float inputDeltaTime = currentTime - inputLastTime;
   inputLastTime = currentTime;
@@ -286,23 +286,34 @@ int main( void )
   glm::vec3 camera_position;
   glm::vec3 camera_up;
 
+  int lastFocusedObject = focusedObject;
   do {
     // Measure speed
     float currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
 
+    if (player.finishTurn()) {
+      changeActivePlayer(focusedObject);
+      player.setPlayer(gameObjects[focusedObject]);
+      camera.setTarget(gameObjects[focusedObject]);
+    } else {
+      processInput(window, deltaTime, currentFrame, camera, focusedObject, gameObjects);
+    }
+
+    if (lastFocusedObject != focusedObject) {
+      lastFocusedObject = focusedObject;
+      if (focusedObject != -1) {
+        player.setPlayer(gameObjects[focusedObject]);
+      }
+    }
+
     camera.updatePosition();
 
     camera_target = camera.target;
     camera_position = camera.position;
     camera_up = camera.up;
-    if (focusedObject != -1) {
-      gameObjects[focusedObject]->cameraDirection = camera_target;
-    }
-
-    // input
-    processInput(window, deltaTime, currentFrame, camera, focusedObject, gameObjects);
+    player.saveCameraDirection(camera_target);
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -415,8 +426,6 @@ int main( void )
     GLuint cam_pos_uniform = glGetUniformLocation(programPRB, "camPos");
     glUniform3f(cam_pos_uniform, camera_position[0], camera_position[1], camera_position[2]);
 
-    //printf("%f, %f, %f \n", camera_position[0], camera_position[1], camera_position[2]);
-
 
     for (int i = 1 ; i < gameObjects.size(); i++){
         
@@ -435,8 +444,7 @@ int main( void )
 
         float speed = glm::length(rb.currentVelocity);
 
-        //if( i == 1) printf("ismoving: %s \n", rb.ismoving ? "true" : "false");
-        
+        //if(i == 1) printf("ismoving: %s \n", rb.ismoving ? "true" : "false");
 
         if (tf.position.y < -4.0f) {
             rb.currentVelocity = glm::vec3(0.0f,0.0f,0.0f);
@@ -458,7 +466,7 @@ int main( void )
                 if(speed < 0.2) {
                   gameObjects[i]->lastPlayerspos = tf.position + glm::vec3(0.0f,1.0f,0.0f);
                   rb.ismoving = false;
-                  }
+                }
 
                 // Applique une force de rebond si nécessaire
                 if (rb.currentVelocity.y < 0.0f)
@@ -624,6 +632,18 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
+void changeActivePlayer(int &currentPlayer) {
+  int focusedObject = currentPlayer + 1;
+  while (!gameObjects[focusedObject]->isPlayer) {
+    focusedObject++;
+    if (focusedObject >= gameObjects.size()) {
+        focusedObject = 0;
+    }
+  }
+
+  currentPlayer = focusedObject;
+}
+
 void setScene2() {
 
   std::vector<unsigned short> indices;
@@ -675,14 +695,14 @@ void setScene2() {
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
-  /*GameObject* sphere2 = new GameObject(sphereMesh);
+  GameObject* sphere2 = new GameObject(sphereMesh);
   sphere2->isPlayer = true;
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
   sphere2->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere2->setTexCoordForSphere();
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
-  gameObjects.push_back(sphere2); */
+  gameObjects.push_back(sphere2);
 }
 
 void setScene() {
