@@ -138,7 +138,7 @@ void processGameInputs(GLFWwindow *window, float deltaTime, float currentFrame, 
 }
 
 
-void processInput(GLFWwindow *window, float deltaTime, float currentFrame, Camera &camera ,int &focusedObject, std::vector<GameObject*> gameObjects) {
+void processInput(GLFWwindow *window, float deltaTime, float currentFrame, Camera &camera, int &focusedObject, std::vector<GameObject*> gameObjects) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -160,10 +160,8 @@ void processInput(GLFWwindow *window, float deltaTime, float currentFrame, Camer
         focusedObject++;
         if (focusedObject >= gameObjects.size()) {
             focusedObject = -1;
-        }
-
-        if (focusedObject > 0) {
-            camera.setTargets(gameObjects[focusedObject], gameObjects[focusedObject+1]);
+        } else if (focusedObject != -1 && gameObjects[focusedObject]->isPlayer) {
+            camera.setTarget(gameObjects[focusedObject]);
         }
     } 
     else if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE) {

@@ -75,6 +75,7 @@ float SURFACE_DISTANCE_DELTA = 0.08;
 // Scene objects
 std::vector<GameObject*> gameObjects;
 std::vector<glm::vec3> lastPlayerspos;
+std::vector<GameObject*> cameraTargets;
 std::vector<Light> lights;
 int focusedObject = -1;
 
@@ -228,7 +229,7 @@ int main( void )
 
   setScene2();
   int terrain = 0;
-  Camera camera;
+  Camera camera(cameraTargets[0]);
   
   // For speed computation
   lastFrame = glfwGetTime();
@@ -283,9 +284,7 @@ int main( void )
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
 
-    if (focusedObject != -1) {
-      camera.updatePosition();
-    }
+    camera.updatePosition();
 
     camera_target = camera.target;
     camera_position = camera.position;
@@ -415,8 +414,10 @@ int main( void )
         RigidBody& rb = gameObjects[i]->rigidBody;
         Transform& tf = gameObjects[i]->transform;
 
-        rb.applyGravity(deltaTime);
-        rb.physicsLoop(deltaTime);
+        if (gameObjects[i]->usePhysics) {
+          rb.applyGravity(deltaTime);
+          rb.physicsLoop(deltaTime);
+        }
 
         float speed = glm::length(rb.currentVelocity);
 
@@ -446,7 +447,6 @@ int main( void )
 
                 rb.stopGravity();
             }
-        
 
             glm::vec3 down = glm::vec3(0.0f, -1.0f, 0.0f);
             float tDummy;
@@ -647,6 +647,7 @@ void setScene2() {
   sphereMesh.material = Mat;
 
   GameObject* sphere = new GameObject(sphereMesh);
+  sphere->isPlayer = true;
   sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
   lastPlayerspos.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
   sphere->setTexCoordForSphere();
@@ -655,12 +656,21 @@ void setScene2() {
   gameObjects.push_back(sphere);
 
   GameObject* sphere2 = new GameObject(sphereMesh);
+  sphere2->isPlayer = true;
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
   lastPlayerspos.push_back(glm::vec3(0.2f, 1.2f, 0.0f));
   sphere2->setTexCoordForSphere();
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
+
+  GameObject* defaultTarget = new GameObject(sphereMesh);
+  defaultTarget->usePhysics = false;
+  defaultTarget->translate(glm::vec3(-15.0f, 2.0f, -2.0f));
+  defaultTarget->setTexCoordForSphere();
+  defaultTarget->mesh.loadBuffers();
+  gameObjects.push_back(defaultTarget);
+  cameraTargets.push_back(defaultTarget);
 }
 
 void setScene() {

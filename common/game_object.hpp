@@ -25,6 +25,7 @@ public:
 
     bool hasLowMesh = false;
     bool usePhysics = true;
+    bool isPlayer = false;
     
     std::vector<GameObject*> children;
     GameObject* parent = nullptr;
