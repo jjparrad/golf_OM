@@ -27,5 +27,7 @@ void InitTextRendering(const std::string& fontPath);
 
 void RenderText(GLuint s, std::string text, float x, float y, float scale, glm::vec3 color);
 
+std::string playerText(int focusedObject);
+
 
 #endif // TEXT_RENDER_HPP
