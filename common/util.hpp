@@ -124,3 +124,19 @@ float skyboxVertices[] = {
 };
 
 
+inline void showFPS(GLFWwindow* window){
+
+    static const float timeBetweenUpdates = 0.5;
+    static double last_time = glfwGetTime();
+    static unsigned int nbframes = 0;
+    static const std::string windowTitle ("FPS - ");
+    double current_time = glfwGetTime();
+
+    nbframes++;
+    
+    if (current_time - last_time > timeBetweenUpdates){ // seconds
+        glfwSetWindowTitle(window, (windowTitle + std::to_string((uint32_t)(nbframes/timeBetweenUpdates))).c_str());
+        last_time = current_time;
+        nbframes = 0;
+    }
+};
