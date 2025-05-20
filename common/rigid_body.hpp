@@ -9,6 +9,7 @@ class RigidBody {
 public:
     float STOP_SPEED_LIMIT = 0.2f;
     bool inGround = false;
+    bool ismoving = true;
 
     Transform* transform = nullptr;
     float mass = 1.0f;

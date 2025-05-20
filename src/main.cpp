@@ -74,7 +74,6 @@ float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
 std::vector<GameObject*> gameObjects;
-std::vector<glm::vec3> lastPlayerspos;
 std::vector<GameObject*> cameraTargets;
 std::vector<Light> lights;
 int focusedObject = -1;
@@ -421,10 +420,12 @@ int main( void )
 
         float speed = glm::length(rb.currentVelocity);
 
+        if( i == 1) printf("ismoving: %s \n", rb.ismoving ? "true" : "false");
+        
 
         if (tf.position.y < -4.0f) {
             rb.currentVelocity = glm::vec3(0.0f,0.0f,0.0f);
-            tf.setPosition(lastPlayerspos[i]);
+            tf.setPosition(gameObjects[i]->lastPlayerspos);
           }
 
         
@@ -439,7 +440,10 @@ int main( void )
                 tf.position += correction;
 
                 speed = glm::length(rb.currentVelocity);
-                if(speed < 0.2) lastPlayerspos[i] = tf.position + glm::vec3(0.0f,1.0f,0.0f);
+                if(speed < 0.2) {
+                  gameObjects[i]->lastPlayerspos = tf.position + glm::vec3(0.0f,1.0f,0.0f);
+                  rb.ismoving = false;
+                  }
 
                 // Applique une force de rebond si nécessaire
                 if (rb.currentVelocity.y < 0.0f)
@@ -633,7 +637,7 @@ void setScene2() {
       gameObjects.push_back(course);
 
   }
-  lastPlayerspos.push_back(glm::vec3(0.0f,0.0f,0.0f));
+
 
   indices.clear();
   vertices.clear();
@@ -649,20 +653,20 @@ void setScene2() {
   GameObject* sphere = new GameObject(sphereMesh);
   sphere->isPlayer = true;
   sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
-  lastPlayerspos.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
+  sphere->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
-  GameObject* sphere2 = new GameObject(sphereMesh);
+  /*GameObject* sphere2 = new GameObject(sphereMesh);
   sphere2->isPlayer = true;
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
-  lastPlayerspos.push_back(glm::vec3(0.2f, 1.2f, 0.0f));
+  sphere2->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere2->setTexCoordForSphere();
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
-  gameObjects.push_back(sphere2);
+  gameObjects.push_back(sphere2);*/
 
   GameObject* defaultTarget = new GameObject(sphereMesh);
   defaultTarget->usePhysics = false;
