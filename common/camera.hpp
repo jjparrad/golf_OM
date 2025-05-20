@@ -16,6 +16,9 @@ public:
     glm::vec3 target = glm::normalize(glm::vec3(0.0f, -1.0f, -1.0f));
     glm::vec3 position = glm::vec3(0.0f, 5.0f, 5.0f);
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    float distanceToObject = 1.5f;
+    float cameraHeight = 0.6f;
     
     void setTarget(GameObject* newCameraTarget) {
         cameraTarget = newCameraTarget;
@@ -54,8 +57,6 @@ private:
     GameObject* cameraTarget = nullptr;
 
     float rotationSpeed = 1.0f;
-    float distanceToObject = 1.0f;
-    float cameraHeight = 0.5f;
     glm::vec3 offsetFromTarget = glm::vec3(0.0f, -2.0f, 0.0f);
 
     void updateOffset() {

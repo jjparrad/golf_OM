@@ -610,6 +610,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 void changeActivePlayer(int &currentPlayer) {
   int focusedObject = currentPlayer + 1;
+  if (focusedObject >= gameObjects.size()) {
+      focusedObject = 0;
+  }
   while (!gameObjects[focusedObject]->isPlayer) {
     focusedObject++;
     if (focusedObject >= gameObjects.size()) {
@@ -621,20 +624,9 @@ void changeActivePlayer(int &currentPlayer) {
 }
 
 void setScene2() {
-
   std::vector<unsigned short> indices;
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec2> texCoords;
-
-
-  Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
-  lights.push_back(firstLight);
-
-  Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
-  lights.push_back(secondLight);
-
-  Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
-
   if (loadOBJ("../assets/golf_course/golf_course.obj",
             "../assets/golf_course/golf_course.mtl",
             indices, vertices, texCoords)) {
@@ -649,29 +641,40 @@ void setScene2() {
       gameObjects.push_back(course);
 
   }
-
-
   indices.clear();
   vertices.clear();
   texCoords.clear();
 
+  Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
+  lights.push_back(firstLight);
+
+  Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
+  lights.push_back(secondLight);
+
+  Light thirdLight = Light(glm::vec3(0.5,1.5,0.0), glm::vec3(0.7,0.5,0.1));
+  lights.push_back(thirdLight);
 
   std::string sphereMeshFilename("../models/sphere.off");
-  
-  Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), 0.5, 0.5, 1.0);
-  Mesh sphereMesh = loadModel(sphereMeshFilename);
-  sphereMesh.material = Mat;
+  Material mat1 = Material( glm::vec3(1.0f,0.0f,1.0f), 0.0, 1.0, 0.0);
+  Material mat2 = Material( glm::vec3(1.0f,1.0f,0.0f), 1.0, 0.0, 0.0);
+  Material mat3 = Material( glm::vec3(0.0f,1.0f,1.0f), 1.0, 1.0, 0.0);
+  Mesh sphereMesh1 = loadModel(sphereMeshFilename);
+  Mesh sphereMesh2 = loadModel(sphereMeshFilename);
+  Mesh sphereMesh3 = loadModel(sphereMeshFilename);
+  sphereMesh1.material = mat1;
+  sphereMesh2.material = mat2;
+  sphereMesh3.material = mat3;
 
-  GameObject* sphere = new GameObject(sphereMesh);
+  GameObject* sphere = new GameObject(sphereMesh1);
   sphere->isPlayer = true;
-  sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
+  sphere->translate(glm::vec3(0.0f, 1.2f, 0.0f));
   sphere->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.06f, 0.06f, 0.06f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
-  GameObject* sphere2 = new GameObject(sphereMesh);
+  GameObject* sphere2 = new GameObject(sphereMesh2);
   sphere2->isPlayer = true;
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
   sphere2->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -679,6 +682,15 @@ void setScene2() {
   sphere2->scale(glm::vec3(0.06f, 0.06f, 0.06f));
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
+
+  GameObject* sphere3 = new GameObject(sphereMesh3);
+  sphere3->isPlayer = true;
+  sphere3->translate(glm::vec3(-0.2f, 1.2f, 0.0f));
+  sphere3->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
+  sphere3->setTexCoordForSphere();
+  sphere3->scale(glm::vec3(0.05f, 0.05f, 0.05f));
+  sphere3->mesh.loadBuffers();
+  gameObjects.push_back(sphere3);
 }
 
 void setScene() {
@@ -699,8 +711,8 @@ void setScene() {
     lights.push_back(secondLight);
 
     Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
-
     lights.push_back(thirdLight);
+
     for(int i = 1 ; i < 4; i++){
       for(int j = 1; j < 4 ; j++){
           Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
