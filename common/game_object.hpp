@@ -27,6 +27,7 @@ public:
     bool usePhysics = true;
     bool isPlayer = false;
     glm::vec3 lastPlayerspos = glm::vec3(0.0f);
+    glm::vec3 cameraDirection = glm::normalize(glm::vec3(0.0f, -1.0f, -1.0f));
     
     std::vector<GameObject*> children;
     GameObject* parent = nullptr;

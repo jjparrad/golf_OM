@@ -75,7 +75,6 @@ float SURFACE_DISTANCE_DELTA = 0.08;
 // Scene objects
 std::vector<GameObject*> gameObjects;
 std::vector<glm::vec3> lastPlayerspos;
-std::vector<GameObject*> cameraTargets;
 std::vector<Light> lights;
 int focusedObject = -1;
 
@@ -670,7 +669,7 @@ void setScene2() {
   sphere2->setTexCoordForSphere();
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
-  gameObjects.push_back(sphere2);
+  gameObjects.push_back(sphere2); */
 }
 
 void setScene() {

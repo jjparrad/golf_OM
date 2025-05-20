@@ -153,9 +153,6 @@ void processInput(GLFWwindow *window, float deltaTime, float currentFrame, Camer
 
     processGameInputs(window, deltaTime, currentFrame, camera,focusedObject,gameObjects);
     
-    }
-
-
     static bool tabPressed = false;
 
     if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS && !tabPressed) {
