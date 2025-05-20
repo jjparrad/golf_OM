@@ -32,6 +32,18 @@ public:
         offsetFromTarget = glm::vec3(rotation * glm::vec4(offsetFromTarget, 0.0f));
     };
 
+    void orbitalVerticalRotation(int direction) {
+        if (!cameraTarget) {
+            return;
+        }
+        float angle = glm::radians(rotationSpeed) * static_cast<float>(direction);
+
+        glm::vec3 axis = glm::normalize(glm::cross(up, target));
+
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angle, axis);
+        offsetFromTarget = glm::vec3(rotation * glm::vec4(offsetFromTarget, 0.0f));
+    };
+
     void updatePosition() {
         if (!cameraTarget) return;
         position = cameraTarget->transform.position + offsetFromTarget;
@@ -42,8 +54,8 @@ private:
     GameObject* cameraTarget = nullptr;
 
     float rotationSpeed = 1.0f;
-    float distanceToObject = 2.0f;
-    float cameraHeight = 1.0f;
+    float distanceToObject = 1.0f;
+    float cameraHeight = 0.5f;
     glm::vec3 offsetFromTarget = glm::vec3(0.0f, -2.0f, 0.0f);
 
     void updateOffset() {

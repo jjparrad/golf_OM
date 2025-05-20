@@ -69,16 +69,18 @@ void processSHIFTSPACE(GLFWwindow *window,float deltaTime, float currentFrame, C
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
         if (focusedObject == -1) { 
             camera.position += (0.5f * cameraSpeed) * camera.up;
-        } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, 0.1, 0));
         }
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
         if (focusedObject == -1) {
             camera.position -= (0.5f * cameraSpeed) * camera.up;
-        } else {
-            gameObjects[focusedObject]->translate(glm::vec3(0, -0.1, 0));
+        }
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) {
+        if (focusedObject != -1) {
+            gameObjects[focusedObject]->translate(glm::vec3(0, 0.1, 0));
         }
     }
 }
@@ -89,6 +91,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float currentFrame, Camer
         glm::vec3 a = glm::vec3(camera.target.x, 0, camera.target.z);
         if (focusedObject == -1) {
             camera.target += (0.5f * cameraSpeed) * camera.up;
+        } else {
+            camera.orbitalVerticalRotation(-1);
         }
     }
 
@@ -96,6 +100,8 @@ void processARROWS(GLFWwindow *window,float deltaTime, float currentFrame, Camer
         glm::vec3 a = glm::vec3(camera.target.x, 0, camera.target.z);
         if (focusedObject == -1) {
             camera.target -= (0.5f * cameraSpeed) * camera.up;
+        } else {
+            camera.orbitalVerticalRotation(1);
         }
     }
 
@@ -124,10 +130,13 @@ void processGameInputs(GLFWwindow *window, float deltaTime, float currentFrame, 
     static bool hitPressed = false;
     static float pressTime = 0;
     
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !hitPressed) {
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !hitPressed) {
+        if (focusedObject == -1 || focusedObject == 0) {
+            focusedObject = 1;
+        }
         hitPressed = true;
         pressTime = currentFrame;
-    } else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && hitPressed) {
+    } else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE && hitPressed) {
             hitPressed = false;
             float force = currentFrame - pressTime;
             force = force > 1.2 ? 1.2 : force;
