@@ -540,8 +540,6 @@ int main( void )
         
         // boucle colision entre les spheres
 
-        printf("player : %d \n", focusedObject);
-
         for (int i = 0; i < gameObjects.size(); ++i) {
           for (int j = i + 1; j < gameObjects.size(); ++j) {
               if (i == terrain || j == terrain) continue; // On ignore les collisions avec le terrain ici
@@ -636,6 +634,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 void changeActivePlayer(int &currentPlayer) {
   int focusedObject = currentPlayer + 1;
+  if (focusedObject >= gameObjects.size()) {
+      focusedObject = 0;
+  }
   while (!gameObjects[focusedObject]->isPlayer) {
     focusedObject++;
     if (focusedObject >= gameObjects.size()) {
@@ -690,7 +691,7 @@ void setScene2() {
 
   GameObject* sphere = new GameObject(sphereMesh);
   sphere->isPlayer = true;
-  sphere->translate(glm::vec3(0.0f, 1.0f, 0.0f));
+  sphere->translate(glm::vec3(0.0f, 1.2f, 0.0f));
   sphere->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere->setTexCoordForSphere();
   sphere->scale(glm::vec3(0.05f, 0.05f, 0.05f));
@@ -705,6 +706,15 @@ void setScene2() {
   sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
+
+  GameObject* sphere3 = new GameObject(sphereMesh);
+  sphere3->isPlayer = true;
+  sphere3->translate(glm::vec3(-0.2f, 1.2f, 0.0f));
+  sphere3->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
+  sphere3->setTexCoordForSphere();
+  sphere3->scale(glm::vec3(0.05f, 0.05f, 0.05f));
+  sphere3->mesh.loadBuffers();
+  gameObjects.push_back(sphere3);
 }
 
 void setScene() {
