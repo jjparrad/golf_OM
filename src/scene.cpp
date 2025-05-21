@@ -68,7 +68,7 @@ void setScene(std::vector<Light> &lights, std::vector<GameObject*> &gameObjects)
   sphere->translate(glm::vec3(0.0f, 1.2f, 0.0f));
   sphere->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere->setTexCoordForSphere();
-  sphere->scale(glm::vec3(0.04f, 0.04f, 0.04f));
+  sphere->scale(glm::vec3(0.06f, 0.06f, 0.06f));
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 

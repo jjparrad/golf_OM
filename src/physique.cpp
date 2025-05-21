@@ -35,7 +35,7 @@ void processPhysique2(GameObject *current, GameObject *terrain,
 
   if (hitGround) {
     float contactY = tf.position.y - tHit;
-    float penetration = (contactY + sphereRadius) - tf.position.y;
+    float penetration = (contactY + sphereRadius/2) - tf.position.y;
 
     if (penetration > 0.0f) {
       // Correction de la position
@@ -75,23 +75,46 @@ void processPhysique2(GameObject *current, GameObject *terrain,
   glm::vec3 velocity = rb.currentVelocity;
   float velLen = glm::length(velocity);
 
+
   if (velLen > 1e-4f) {
-    glm::vec3 direction = glm::normalize(velocity);
-    float maxDist = velLen * deltaTime;
-    float t;
-    glm::vec3 normal;
-    if (rayIntersectsMesh(tf.position, direction, terrain->mesh, t, normal) &&
-        t < maxDist) {
-      tf.position += direction * t;
-      glm::vec3 reflected = glm::reflect(velocity, normal) * restitutionFactor;
-      if (glm::length(reflected) < minBounceVelocity) {
-        reflected = glm::vec3(0.0f);
-        rb.stopGravity();
-        rb.slowDown(deltaTime);
-      }
-      rb.currentVelocity = reflected;
+        glm::vec3 direction = glm::normalize(velocity);
+        glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
+        glm::vec3 right = glm::cross(direction, up);
+
+        // Fallback si direction est parallèle à Y
+        if (glm::length(right) < 1e-4f)
+            right = glm::vec3(1.0, 0.0, 0.0);
+
+        right = glm::normalize(right);
+        float maxDist = velLen * deltaTime * 1.01;
+        float t;
+        glm::vec3 normal;
+        glm::vec3 offsets[] = {
+            glm::vec3(0.0f),               // centre
+            sphereRadius * right,         // côté +
+            -sphereRadius * right         // côté -
+        };
+
+        for (const auto& offset : offsets) {
+            glm::vec3 origin = tf.position + offset;
+            if (rayIntersectsMesh(origin, direction, terrain->mesh, t, normal) && t < maxDist) {
+                tf.position += direction * t;
+
+                // Décalage léger pour éviter l'encastrement
+                tf.position += normal * 0.01f;
+
+                glm::vec3 reflected = glm::reflect(velocity, normal) * restitutionFactor;
+                if (glm::length(reflected) < minBounceVelocity) {
+                    reflected = glm::vec3(0.0f);
+                    rb.stopGravity();
+                    rb.slowDown(deltaTime);
+                }
+
+                rb.currentVelocity = reflected;
+                break; // Collision traitée, on sort de la boucle
+            }
+        }
     }
-  }
 }
 
 void processPhysique(GameObject *current, GameObject *terrain,
