@@ -22,7 +22,7 @@ GLFWwindow *window;
 #include <iostream>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+//#include <stb_image.h>
 
 #include "common/textRender.hpp"
 #include <common/shader.hpp>
@@ -38,9 +38,10 @@ GLFWwindow *window;
 #include "common/util.hpp"
 #include "common/precalcul.hpp"
 #include "common/rigid_body.hpp"
+#include "common/physique.hpp"
+#include "common/terrainRender.hpp"
 
 Mesh loadModel(std::string filename);
-void setScene2();
 void setScene();
 void changeActivePlayer(int &currentPlayer);
 void loadGameObject(GameObject object, GLuint vertexbuffer,
@@ -62,8 +63,6 @@ const char *HEIGHTMAP_PATH = "../assets/textures/heightmap_1.jpg";
 const char *TEXTURE_EARTH_PATH = "../assets/textures/chess.jpg";
 // const char *TEXTURE_EARTH_PATH = "../assets/textures/s1.png";
 
-unsigned char *heightmapData;
-int heightmapWidth, heightmapHeight, heightmapNrChannels;
 
 float DISTANCE_LOW_RESOLUTION = 10.0;
 
@@ -100,41 +99,7 @@ void drawObject(Mesh mesh) {
 
 /*******************************************************************************/
 
-unsigned int loadTexture(const char *path) {
-  int width, height, nrChannels;
-  unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
-  if (data) {
-    GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
 
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // X
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Y
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format,
-                 GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    if (path == HEIGHTMAP_PATH) {
-      heightmapData = data;
-      heightmapWidth = width;
-      heightmapHeight = height;
-      heightmapNrChannels = nrChannels;
-    } else {
-      stbi_image_free(data);
-    }
-
-    return textureID;
-  } else {
-    std::cout << "Failed to load texture" << std::endl;
-    return 0;
-  }
-}
 
 /*******************************************************************************/ 
 
@@ -239,7 +204,12 @@ int main( void )
   GLuint elementbuffer;
   glGenBuffers(1, &elementbuffer);
 
-  setScene2();
+  setScene();
+
+  //init terrain
+  initTerrainShader(programID,textureHeightmap, texture1);
+
+
   int terrain = 0;
   Camera camera;
   Player player;
@@ -247,24 +217,16 @@ int main( void )
   // For speed computation
   lastFrame = glfwGetTime();
 
-  GLuint textureSky = loadCubemap(facesSky, true);
-
+  GLuint cubemapTexture;
   GLuint skyboxVAO, skyboxVBO;
+  initSkybox(skyboxVAO, skyboxVBO, cubemapTexture, facesSky); // skybox vao
+
 
 
   GLint prevVAO;
   glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
-  // init skybox VAO
-  glGenVertexArrays(1, &skyboxVAO);
-  glGenBuffers(1, &skyboxVBO);
-  glBindVertexArray(skyboxVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-  glBindVertexArray(prevVAO);
-
+  
   // For speed computation
   lastFrame = glfwGetTime();
   float currentTime = glfwGetTime();
@@ -272,11 +234,6 @@ int main( void )
   inputLastTime = currentTime;
 
   int nbFrames = 0;
-
-  // HDR précalcul =======================================================================================
-  GLuint prefilterMap = generatePrefilterMap(prefilterShader, textureSky);
-
-  GLuint irradianceMap = generateIrradianceMap(programHDR, textureSky);
 
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -337,60 +294,14 @@ int main( void )
 
 
     // ========== Rendu skybox ==========
-    glDepthFunc(GL_LEQUAL);
-    glDepthMask(GL_FALSE);
-    glUseProgram(programSky);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureSky);
+    renderSkybox(skyboxVAO, cubemapTexture, programSky, view, projection);
 
-    glm::mat4 viewSky = glm::mat4(glm::mat3(view)); // enlever la translation
-
-    glUniformMatrix4fv(glGetUniformLocation(programSky, "view"), 1, GL_FALSE, &viewSky[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(programSky, "projection"), 1, GL_FALSE, &projection[0][0]);
-
-    glBindVertexArray(skyboxVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LESS);
 
     //========= 1er shader ===============
-    glUseProgram(programID);
-
-    glActiveTexture(GL_TEXTURE0 + 0);
-    glBindTexture(GL_TEXTURE_2D, textureHeightmap);
-    glUniform1i(glGetUniformLocation(programID, "heightmap"), 0);
-
-    glActiveTexture(GL_TEXTURE0 + 1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    glUniform1i(glGetUniformLocation(programID, "textureImgLow"), 1);
-
-    glActiveTexture(GL_TEXTURE0 + 2);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-    glUniform1i(glGetUniformLocation(programID, "textureImgMid"), 2);
-
-    glActiveTexture(GL_TEXTURE0 + 3);
-    glBindTexture(GL_TEXTURE_2D, texture3);
-    glUniform1i(glGetUniformLocation(programID, "textureImgHigh"), 3);
-
-    model = gameObjects[terrain]->getTransformation();
-    view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
-    projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    mvp = projection * view * model;
-
-    glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE,
-                       &mvp[0][0]);
-
-    glUniformMatrix4fv(glGetUniformLocation(programID, "MVP"), 1, GL_FALSE, &mvp[0][0]);
 
 
-    glUniform1i(glGetUniformLocation(programID, "isFocused"), 0 == focusedObject ? 1 : 0);
-    Mesh terrainMesh = gameObjects[0]->mesh;
-    drawObject(terrainMesh);
-
-    
+    renderTerrain(programID, gameObjects[0], camera, 0 == focusedObject ? 1 : 0);
 
 
     // PRB =====================================================================
@@ -403,13 +314,6 @@ int main( void )
     GLuint mvp_uniform = glGetUniformLocation(programPRB, "MVP");
     glUniformMatrix4fv(mvp_uniform, 1, GL_FALSE, &mvp[0][0]);
 
-    glActiveTexture(GL_TEXTURE0 + 1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-    glUniform1i(glGetUniformLocation(programPRB, "irradianceMap"), 1);
-
-    glActiveTexture(GL_TEXTURE0 + 2);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-    glUniform1i(glGetUniformLocation(programPRB, "prefilterMap"), 2);
 
 
     GLuint light_pos_uniform = glGetUniformLocation(programPRB, "lightPositions");
@@ -432,104 +336,19 @@ int main( void )
 
 
     for (int i = 1 ; i < gameObjects.size(); i++){
-        
+
         float minBounceVelocity = 0.3f;
         float sphereRadius = 0.06f;
         float restitutionFactor = 0.55f;
         float rollFriction = 0.4f;
 
-        RigidBody& rb = gameObjects[i]->rigidBody;
-        Transform& tf = gameObjects[i]->transform;
-
-        if (gameObjects[i]->usePhysics) {
-            rb.applyGravity(deltaTime);
-            rb.physicsLoop(deltaTime);
-        }
-
-        // Stop object if it falls too low
-        if (tf.position.y < -4.0f) {
-            rb.currentVelocity = glm::vec3(0.0f);
-            tf.setPosition(gameObjects[i]->lastPlayerspos);
-        }
-
-        // Collision avec le sol (raycast vers le bas)
-        float tHit;
-        glm::vec3 groundNormal;
-        bool hitGround = rayIntersectsMesh(tf.position, glm::vec3(0.0f, -1.0f, 0.0f), gameObjects[0]->mesh, tHit, groundNormal);
-
-        if (hitGround) {
-            float contactY = tf.position.y - tHit;
-            float penetration = (contactY + sphereRadius) - tf.position.y;
-
-            if (penetration > 0.0f) {
-                // Correction de la position
-                tf.position.y += penetration * 1.5f;
-
-                float speed = glm::length(rb.currentVelocity);
-                if (speed < 0.2f) {
-                    gameObjects[i]->lastPlayerspos = tf.position + glm::vec3(0.0f, 1.0f, 0.0f);
-                    rb.ismoving = false;
-                }
-
-                // Rebond
-                if (rb.currentVelocity.y < 0.0f)
-                    rb.currentVelocity.y *= -restitutionFactor;
-
-                rb.stopGravity();
-            }
-
-            // Appliquer la friction si on est sur une pente
-            rb.applySlopeForce(deltaTime, groundNormal);
-
-            float speed = glm::length(rb.currentVelocity);
-            if (speed > 1e-4f) {
-                glm::vec3 frictionDir = -glm::normalize(rb.currentVelocity);
-                glm::vec3 friction = frictionDir * rollFriction * deltaTime;
-
-                if (glm::length(friction) > speed)
-                    friction = -rb.currentVelocity;
-
-                rb.currentVelocity += friction;
-            } else {
-                rb.currentVelocity = glm::vec3(0.0f);
-            }
-        }
-
-        // Détection collision avec mesh (rebond)
-        glm::vec3 velocity = rb.currentVelocity;
-        float velLen = glm::length(velocity);
-        if (velLen > 1e-4f) {
-            glm::vec3 direction = glm::normalize(velocity);
-            float maxDist = velLen * deltaTime;
-            float t; glm::vec3 normal;
-            if (rayIntersectsMesh(tf.position, direction, gameObjects[0]->mesh, t, normal) && t < maxDist) {
-                tf.position += direction * t;
-
-                glm::vec3 reflected = glm::reflect(velocity, normal) * restitutionFactor;
-                if (glm::length(reflected) < minBounceVelocity) {
-                    reflected = glm::vec3(0.0f);
-                    rb.stopGravity();
-                    rb.slowDown(deltaTime);
-                }
-                rb.currentVelocity = reflected;
-            }
-        }
-
+        processPhysique(gameObjects[i],gameObjects[0],deltaTime);
+        
         // Collision entre sphères
-        for (int a = 0; a < gameObjects.size(); ++a) {
-            for (int b = a + 1; b < gameObjects.size(); ++b) {
-                if (a == terrain || b == terrain) continue; // ignorer le terrain
-
-                Transform& ta = gameObjects[a]->transform;
-                Transform& tb = gameObjects[b]->transform;
-                RigidBody& ra = gameObjects[a]->rigidBody;
-                RigidBody& rb = gameObjects[b]->rigidBody;
-
-                if (areSpheresColliding(ta, tb, sphereRadius / 2, sphereRadius / 2)) {
-                    resolveSphereCollision(ra, rb, sphereRadius / 2, sphereRadius / 2);
-                }
-            }
-        }
+        spheresCollision(gameObjects,sphereRadius);
+        
+        
+        
           
         glm::mat4 model = gameObjects[i]->getTransformation();
         glm::mat4 view = glm::lookAt(camera_position, camera_target + camera_position, camera_up);
@@ -623,7 +442,7 @@ void changeActivePlayer(int &currentPlayer) {
   currentPlayer = focusedObject;
 }
 
-void setScene2() {
+void setScene() {
   std::vector<unsigned short> indices;
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec2> texCoords;
@@ -683,50 +502,5 @@ void setScene2() {
   sphere2->mesh.loadBuffers();
   gameObjects.push_back(sphere2);
 
-  GameObject* sphere3 = new GameObject(sphereMesh3);
-  sphere3->isPlayer = true;
-  sphere3->translate(glm::vec3(-0.2f, 1.2f, 0.0f));
-  sphere3->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
-  sphere3->setTexCoordForSphere();
-  sphere3->scale(glm::vec3(0.05f, 0.05f, 0.05f));
-  sphere3->mesh.loadBuffers();
-  gameObjects.push_back(sphere3);
 }
 
-void setScene() {
-    std::string sphereMeshFilename("../models/sphere.off");
-    std::string sphereMeshLowFilename("../models/suzanne.off");
-
-
-    GameObject *surface = generateSurface(heightmapHeight, heightmapWidth,
-                                          heightmapNrChannels, heightmapData);
-  surface->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
-  gameObjects.push_back(surface);
-
-
-    Light firstLight = Light(glm::vec3(2.5,2.5,2.0), glm::vec3(1.0,1.0,1.0));
-    lights.push_back(firstLight);
-
-    Light secondLight = Light(glm::vec3(0.5,4.5,0.6), glm::vec3(0.7,0.5,0.1));
-    lights.push_back(secondLight);
-
-    Light thirdLight = Light(glm::vec3(4.5,0.5,0.6), glm::vec3(0.7,0.5,0.1));
-    lights.push_back(thirdLight);
-
-    for(int i = 1 ; i < 4; i++){
-      for(int j = 1; j < 4 ; j++){
-          Material Mat = Material( glm::vec3(1.0f,0.0f,1.0f), i/10.0, j/10.0, 1.0);
-          Mesh sphereMesh = loadModel(sphereMeshFilename);
-          sphereMesh.material = Mat;
-
-          GameObject* sphere = new GameObject(sphereMesh);
-
-          sphere->translate(glm::vec3((float)i*0.5f, (float)j*0.5f , (float)i + j));
-          sphere->setTexCoordForSphere();
-          sphere->scale(glm::vec3(0.5f, 0.5f, 0.5f));
-          sphere->mesh.loadBuffers();
-          gameObjects.push_back(sphere);
-
-      }
-  } 
-}

@@ -11,9 +11,6 @@ uniform float roughness;
 uniform float ao;
 // HDR
 
-uniform samplerCube irradianceMap;
-uniform samplerCube prefilterMap;
-
 // lights
 uniform vec3 lightPositions[10];  // Taille maximale du tableau
 uniform vec3 lightColors[10];     // Taille maximale du tableau
@@ -93,7 +90,6 @@ void main()
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
         vec3 R = reflect(-V, N);
-        vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * 4.0).rgb;
 
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
@@ -108,10 +104,8 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
   
-  
-    vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 ambient = irradiance * albedo * ao;
-    //vec3 ambient = vec3(0.03) * albedo * ao;
+
+    vec3 ambient = vec3(0.03) * albedo * ao;
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));

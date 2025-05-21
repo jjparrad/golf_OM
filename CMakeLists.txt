@@ -73,6 +73,9 @@ add_executable(main
 	src/input.cpp
 	src/rigid_body.cpp
 	src/textRender.cpp
+	src/physique.cpp
+	src/terrainRender.cpp
+	src/util.cpp
 	
 )
 target_link_libraries(main

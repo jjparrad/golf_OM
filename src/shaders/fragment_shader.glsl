@@ -5,7 +5,7 @@ in float height;
 flat in int fragFocus;
 flat in int fragUseHeight;
 
-uniform sampler2D textureImgLow;
+uniform sampler2D textureImg;
 
 
 // Ouput data
@@ -13,7 +13,7 @@ out vec4 color;
 
 void main() {
 
-    color = texture(textureImgLow, textureCoords);
+    color = texture(textureImg, textureCoords);
     
 
     if (fragFocus == 1) {
