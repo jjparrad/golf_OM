@@ -46,10 +46,8 @@ void processPhysique2(GameObject *current, GameObject *terrain,
         rb.ismoving = false;
       }
 
-      // Rebond
-      if (rb.currentVelocity.y < 0.0f)
-        rb.currentVelocity.y *= -restitutionFactor;
-        rb.stopGravity();
+    
+      rb.stopGravity();
     }
 
     // Appliquer la friction si on est sur une pente

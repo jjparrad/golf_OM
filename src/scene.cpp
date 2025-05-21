@@ -72,14 +72,14 @@ void setScene(std::vector<Light> &lights, std::vector<GameObject*> &gameObjects)
   sphere->mesh.loadBuffers();
   gameObjects.push_back(sphere);
 
-  /*GameObject* sphere2 = new GameObject(sphereMesh2);
+  GameObject* sphere2 = new GameObject(sphereMesh2);
   sphere2->isPlayer = true;
   sphere2->translate(glm::vec3(0.2f, 1.2f, 0.0f));
   sphere2->lastPlayerspos = glm::vec3(0.0f, 1.0f, 0.0f);
   sphere2->setTexCoordForSphere();
-  sphere2->scale(glm::vec3(0.05f, 0.05f, 0.05f));
+  sphere2->scale(glm::vec3(0.06f, 0.06f, 0.06f));
   sphere2->mesh.loadBuffers();
-  gameObjects.push_back(sphere2);*/
+  gameObjects.push_back(sphere2);
 
   for (int i = 1 ; i < gameObjects.size(); i++){
       gameObjects[0]->children.push_back(gameObjects[i]);
