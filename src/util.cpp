@@ -115,3 +115,6 @@ unsigned int loadTexture(const char *path) {
 }
 
 
+void printVec3(glm::vec3 vector) {
+  std::cout << "x: " << vector.x << " | y: " << vector.y << " | z: " << vector.z << std::endl;
+}

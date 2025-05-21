@@ -84,26 +84,9 @@ int focusedObject = -1;
 
 //text
 
-/*******************************************************************************/
-
-void printVec3(glm::vec3 vector) {
-  std::cout << "x: " << vector.x << " | y: " << vector.y << " | z: " << vector.z << std::endl;
-}
-
-void drawObject(Mesh mesh) {
-    glBindVertexArray(mesh.vaoID);
-    glDrawElements(GL_TRIANGLES,          // mode
-                 mesh.getIndicesSize(), // count
-                 GL_UNSIGNED_SHORT,     // type
-                 0);              // element array buffer offset
-    glBindVertexArray(0);
-}
 
 /*******************************************************************************/
 
-
-
-/*******************************************************************************/ 
 
 int main( void )
 {
@@ -305,7 +288,7 @@ int main( void )
 
     // PRB =====================================================================
 
-    renderPRB(programPRB, lights, camera, gameObjects, deltaTime);
+    renderPRB(programPRB, lights, camera, gameObjects, deltaTime); // la physique se trouve dans cette fonction (et physique.cpp)
 
     
 
