@@ -66,7 +66,7 @@ void renderPRB(GLuint program,
         float restitutionFactor = 0.55f;
         float rollFriction = 0.4f;
 
-        processPhysique(gameObjects[i], gameObjects[0], deltaTime);
+        processPhysique2(gameObjects[i], gameObjects[0], deltaTime);
         spheresCollision(gameObjects, sphereRadius);
 
         glm::mat4 model = gameObjects[i]->getTransformation();
