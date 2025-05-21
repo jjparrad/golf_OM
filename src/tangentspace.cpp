@@ -1,7 +1,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-#include "tangentspace.hpp"
+#include "common/tangentspace.hpp"
 
 void computeTangentBasis(
 	// inputs

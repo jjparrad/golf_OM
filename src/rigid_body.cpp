@@ -4,8 +4,8 @@
 #include <iostream>
 #include <cstdlib>
 #include <float.h>
-#include "rigid_body.hpp"
-#include "transform.hpp"
+#include "common/rigid_body.hpp"
+#include "common/transform.hpp"
 
 
 

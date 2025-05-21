@@ -12,7 +12,7 @@
 
 
 
-#include "objloader.hpp"
+#include "common/objloader.hpp"
 
 // Very, VERY simple OBJ loader.
 // Here is a short list of features a real function would provide : 

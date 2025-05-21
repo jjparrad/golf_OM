@@ -654,7 +654,7 @@ void setScene2() {
   Light thirdLight = Light(glm::vec3(0.5,1.5,0.0), glm::vec3(0.7,0.5,0.1));
   lights.push_back(thirdLight);
 
-  std::string sphereMeshFilename("../models/sphere.off");
+  std::string sphereMeshFilename("../assets/models/sphere.off");
   Material mat1 = Material( glm::vec3(1.0f,0.0f,1.0f), 0.0, 1.0, 0.0);
   Material mat2 = Material( glm::vec3(1.0f,1.0f,0.0f), 1.0, 0.0, 0.0);
   Material mat3 = Material( glm::vec3(0.0f,1.0f,1.0f), 1.0, 1.0, 0.0);

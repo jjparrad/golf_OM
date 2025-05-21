@@ -64,21 +64,16 @@ add_definitions(
 # TP1
 add_executable(main
         src/main.cpp
-	common/shader.cpp
-	common/shader.hpp
-	common/controls.cpp
-	common/controls.hpp
-	common/texture.cpp
-	common/texture.hpp
-	common/mesh.cpp
-	common/mesh.hpp
-	common/objloader.cpp
-	common/objloader.hpp
-	common/vboindexer.cpp
-	common/vboindexer.hpp
-	common/input.cpp
-	common/rigid_body.cpp
-	common/textRender.cpp
+	src/shader.cpp
+	src/controls.cpp
+	src/texture.cpp
+	src/mesh.cpp
+	src/objloader.cpp
+	src/vboindexer.cpp
+	src/input.cpp
+	src/rigid_body.cpp
+	src/textRender.cpp
+	
 )
 target_link_libraries(main
 	${ALL_LIBS}
