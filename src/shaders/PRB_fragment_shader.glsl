@@ -89,7 +89,6 @@ void main()
         float G   = GeometrySmith(N, V, L, roughness);      
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
-        vec3 R = reflect(-V, N);
 
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
@@ -105,7 +104,7 @@ void main()
     }
   
 
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 ambient = vec3(1.0) * albedo * ao;
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));
