@@ -77,6 +77,7 @@ float inputLastTime = 0.0f;
 float SURFACE_DISTANCE_DELTA = 0.08;
 
 // Scene objects
+glm::vec3 goal = glm::vec3(-15.4, 1, 3.5);
 std::vector<GameObject*> gameObjects;
 std::vector<glm::vec3> lastPlayerspos;
 std::vector<Light> lights;
@@ -290,7 +291,17 @@ int main( void )
 
     renderPRB(programPRB, lights, camera, gameObjects, deltaTime); // la physique se trouve dans cette fonction (et physique.cpp)
 
-    
+    for (GameObject* g : gameObjects) {
+      if (!g->isPlayer) {
+        continue;
+      }
+
+      float distanceToGoal = glm::distance(goal, g->transform.position);
+      if (distanceToGoal < 0.1) {
+          focusedObject = -2;
+          break;
+      }
+    }
 
     RenderText(programText, playerText(focusedObject), 25.0f, 25.0f, 0.6f, glm::vec3(0.0f, 0.0f, 0.0f));
 
