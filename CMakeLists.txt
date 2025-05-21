@@ -76,7 +76,8 @@ add_executable(main
 	src/physique.cpp
 	src/terrainRender.cpp
 	src/util.cpp
-	
+	src/PBRrender.cpp
+	src/scene.cpp
 )
 target_link_libraries(main
 	${ALL_LIBS}

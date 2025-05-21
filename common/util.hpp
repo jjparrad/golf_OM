@@ -33,3 +33,4 @@ inline void showFPS(GLFWwindow* window) {
 }
 
 unsigned int loadTexture(const char *path);
+
